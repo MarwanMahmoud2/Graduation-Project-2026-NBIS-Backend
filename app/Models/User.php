@@ -32,15 +32,15 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    // المواليد اللي سجلتها الممرضة
-    public function registeredBabies(): HasMany
+    // الأطفال اللي سجلتها الممرضة
+    public function registeredChildren(): HasMany
     {
-        return $this->hasMany(Baby::class, 'nurse_id');
+        return $this->hasMany(Child::class, 'nurse_id');
     }
 
     // أطفال ولي الأمر المرتبطين بحسابه
     public function children(): HasMany
     {
-        return $this->hasMany(Baby::class, 'parent_user_id');
+        return $this->hasMany(Child::class, 'user_id');
     }
 }

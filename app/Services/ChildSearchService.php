@@ -2,46 +2,46 @@
 
 namespace App\Services;
 
-use App\Models\Baby;
+use App\Models\Child;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
  * بحث نصي عن سجلات الأطفال (شرطة / ويب قديم).
  * الواجهة الرئيسية للتطبيق: JSON API + React؛ هذا المنطق مستقل عن Blade.
  */
-class BabySearchService
+class ChildSearchService
 {
     /** بحث بسيط في حقول الاسم ورقم الأب القومي */
     public function searchByText(?string $query): Collection
     {
         $q = trim((string) $query);
         if ($q === '') {
-            return Baby::query()->whereRaw('0 = 1')->get();
+            return Child::query()->whereRaw('0 = 1')->get();
         }
 
-        return Baby::query()
+        return Child::query()
             ->where(function ($builder) use ($q) {
                 $builder->where('father_national_id', 'LIKE', "%{$q}%")
                     ->orWhere('father_name', 'LIKE', "%{$q}%")
                     ->orWhere('mother_name', 'LIKE', "%{$q}%")
-                    ->orWhere('baby_name', 'LIKE', "%{$q}%");
+                    ->orWhere('name', 'LIKE', "%{$q}%");
             })
             ->get();
     }
 
     /** شكل موحّد للاستجابة JSON (React / موبايل) */
-    public function toSearchResultRows(Collection $babies): array
+    public function toSearchResultRows(Collection $children): array
     {
-        return $babies->map(function (Baby $baby) {
+        return $children->map(function (Child $child) {
             return [
-                'id' => $baby->id,
-                'baby_name' => $baby->baby_name,
-                'mother_name' => $baby->mother_name,
-                'father_name' => $baby->father_name,
-                'father_phone' => $baby->father_phone,
-                'father_national_id' => $baby->father_national_id,
-                'status' => $baby->status,
-                'footprint_url' => $baby->footprint_url,
+                'id' => $child->id,
+                'name' => $child->name,
+                'mother_name' => $child->mother_name,
+                'father_name' => $child->father_name,
+                'father_phone' => $child->father_phone,
+                'father_national_id' => $child->father_national_id,
+                'status' => $child->status,
+                'footprint_url' => $child->footprint_url,
             ];
         })->values()->all();
     }

@@ -1,0 +1,53 @@
+import client from './client';
+
+export const authService = {
+  login: async (credentials) => {
+    const response = await client.post('/login', credentials);
+    return response.data;
+  },
+
+  register: async (data) => {
+    const response = await client.post('/register', data);
+    return response.data;
+  },
+
+  logout: async () => {
+    const response = await client.post('/logout');
+    return response.data;
+  },
+
+  getCurrentUser: async () => {
+    const response = await client.get('/user');
+    return response.data;
+  },
+
+  updateProfile: async (data) => {
+    const response = await client.put('/user/profile', data);
+    return response.data;
+  },
+
+  updatePassword: async (data) => {
+    const response = await client.put('/user/password', data);
+    return response.data;
+  },
+
+  sendEmailVerification: async () => {
+    const response = await client.post('/email/verification-notification');
+    return response.data;
+  },
+
+  verifyEmail: async (id, hash) => {
+    const response = await client.get(`/verify-email/${id}/${hash}`);
+    return response.data;
+  },
+
+  forgotPassword: async (data) => {
+    const response = await client.post('/forgot-password', data);
+    return response.data;
+  },
+
+  resetPassword: async (data) => {
+    const response = await client.post('/reset-password', data);
+    return response.data;
+  },
+};

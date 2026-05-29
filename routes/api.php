@@ -2,9 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\BabyController;
-use App\Http\Controllers\Api\InfantController;
-use App\Http\Controllers\Api\InfantFootprintController;
+use App\Http\Controllers\Api\ChildController;
 use App\Http\Controllers\Api\ParentController;
 
 /*
@@ -28,18 +26,26 @@ Route::middleware('auth:sanctum')->group(function () {
 */
 Route::middleware(['auth:sanctum', 'role:user'])->group(function () {
     Route::get('/my-children', [ParentController::class, 'index']);
-    Route::get('/my-children/{baby}', [ParentController::class, 'show']);
+    Route::get('/my-children/{child}', [ParentController::class, 'show']);
     Route::post('/missing-reports', [ParentController::class, 'reportMissing']);
 });
 
 /*
 |--------------------------------------------------------------------------
-| ممرضة / أدمن — تسجيل مولود (جدول babies)
+| ممرضة / أدمن — تسجيل طفل (جدول children)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'role:nurse,admin'])->group(function () {
-    Route::post('/babies/register', [BabyController::class, 'store']);
-    Route::post('/infants/register', [InfantController::class, 'store']);
+    Route::post('/children/register', [ChildController::class, 'store']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| ولي الأمر (user) — تسجيل طفل من الموبايل
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth:sanctum', 'role:user'])->group(function () {
+    Route::post('/children/register-by-parent', [ChildController::class, 'storeByParent']);
 });
 
 /*
@@ -48,7 +54,7 @@ Route::middleware(['auth:sanctum', 'role:nurse,admin'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'role:police,admin'])->group(function () {
-    Route::post('/babies/text-search', [BabyController::class, 'textSearch']);
-    Route::post('/infants/search', [InfantFootprintController::class, 'search']);
-    Route::post('/infants/validate', [InfantFootprintController::class, 'validateFootprint']);
+    Route::post('/children/text-search', [ChildController::class, 'textSearch']);
+    Route::post('/children/search-by-footprint', [ChildController::class, 'searchByFootprint']);
+    Route::post('/children/validate-footprint', [ChildController::class, 'validateFootprint']);
 });

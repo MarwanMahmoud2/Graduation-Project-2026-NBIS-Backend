@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
-use App\Models\Baby;
+use App\Models\Child;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,7 +31,7 @@ class AuthController extends Controller
             'role' => 'user',
         ]);
 
-        $this->linkExistingBabiesToParent($user);
+        $this->linkExistingChildrenToParent($user);
 
         $token = $user->createToken('mobile')->plainTextToken;
 
@@ -62,7 +62,7 @@ class AuthController extends Controller
         }
 
         if ($user->role === 'user') {
-            $this->linkExistingBabiesToParent($user);
+            $this->linkExistingChildrenToParent($user);
         }
 
         $token = $user->createToken('api')->plainTextToken;
@@ -107,15 +107,15 @@ class AuthController extends Controller
     /**
      * ربط سجلات المستشفى (سجلتها الممرضة) بولي الأمر لو الرقم القومي متطابق.
      */
-    private function linkExistingBabiesToParent(User $user): void
+    private function linkExistingChildrenToParent(User $user): void
     {
         if (! $user->national_id) {
             return;
         }
 
-        Baby::query()
+        Child::query()
             ->where('father_national_id', $user->national_id)
-            ->whereNull('parent_user_id')
-            ->update(['parent_user_id' => $user->id]);
+            ->whereNull('user_id')
+            ->update(['user_id' => $user->id]);
     }
 }

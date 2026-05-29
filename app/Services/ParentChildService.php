@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Baby;
+use App\Models\Child;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -14,51 +14,51 @@ class ParentChildService
     /** أطفال ولي الأمر المرتبطين بحسابه */
     public function childrenForParent(User $user): Collection
     {
-        return Baby::query()
-            ->where('parent_user_id', $user->id)
+        return Child::query()
+            ->where('user_id', $user->id)
             ->orderByDesc('updated_at')
             ->get();
     }
 
     /** بيانات الطفل للعرض (JSON أو واجهة) */
-    public function babyPayload(Baby $baby): array
+    public function childPayload(Child $child): array
     {
         return [
-            'id' => $baby->id,
-            'baby_name' => $baby->baby_name,
-            'mother_name' => $baby->mother_name,
-            'father_name' => $baby->father_name,
-            'father_phone' => $baby->father_phone,
-            'status' => $baby->status,
-            'footprint_url' => $baby->footprint_url,
-            'registered_at' => $baby->created_at?->toIso8601String(),
-            'updated_at' => $baby->updated_at?->toIso8601String(),
+            'id' => $child->id,
+            'name' => $child->name,
+            'mother_name' => $child->mother_name,
+            'father_name' => $child->father_name,
+            'father_phone' => $child->father_phone,
+            'status' => $child->status,
+            'footprint_url' => $child->footprint_url,
+            'registered_at' => $child->created_at?->toIso8601String(),
+            'updated_at' => $child->updated_at?->toIso8601String(),
         ];
     }
 
-    public function assertParentOwnsBaby(User $user, Baby $baby): void
+    public function assertParentOwnsChild(User $user, Child $child): void
     {
-        if ((int) $baby->parent_user_id !== (int) $user->id) {
+        if ((int) $child->user_id !== (int) $user->id) {
             abort(403, 'You can only access your own children.');
         }
     }
 
     /**
-     * @return array{status: 'success'|'already_missing', baby: Baby, notes?: ?string}
+     * @return array{status: 'success'|'already_missing', child: Child, notes?: ?string}
      */
-    public function reportMissing(User $user, int $babyId, ?string $notes): array
+    public function reportMissing(User $user, int $childId, ?string $notes): array
     {
-        $baby = Baby::findOrFail($babyId);
-        $this->assertParentOwnsBaby($user, $baby);
+        $child = Child::findOrFail($childId);
+        $this->assertParentOwnsChild($user, $child);
 
-        if ($baby->status === 'missing') {
-            return ['status' => 'already_missing', 'baby' => $baby, 'notes' => $notes];
+        if ($child->status === 'missing') {
+            return ['status' => 'already_missing', 'child' => $child, 'notes' => $notes];
         }
 
-        $baby->update([
+        $child->update([
             'status' => 'missing',
         ]);
 
-        return ['status' => 'success', 'baby' => $baby->fresh(), 'notes' => $notes];
+        return ['status' => 'success', 'child' => $child->fresh(), 'notes' => $notes];
     }
 }

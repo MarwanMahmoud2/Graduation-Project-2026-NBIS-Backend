@@ -2,30 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\BabyRegistrationService;
+use App\Services\ChildRegistrationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * تسجيل مولود من واجهة الويب (Breeze + Blade).
- * المنطق في BabyRegistrationService — نفس جدول babies و API.
+ * تسجيل طفل من واجهة الويب (Breeze + Blade).
+ * المنطق في ChildRegistrationService — نفس جدول children و API.
  */
 class BabyController extends Controller
 {
     public function __construct(
-        private BabyRegistrationService $babyRegistration,
+        private ChildRegistrationService $childRegistration,
     ) {
     }
 
     public function create()
     {
-        return view('babies.create');
+        return view('children.create');
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'baby_name' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'mother_name' => 'required|string|max:255',
             'father_name' => 'required|string|max:255',
             'father_phone' => 'required|string|max:15',
@@ -33,12 +33,12 @@ class BabyController extends Controller
             'footprint_image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $this->babyRegistration->register(
+        $this->childRegistration->register(
             $validated,
             (int) Auth::id(),
             $request->file('footprint_image'),
         );
 
-        return redirect()->back()->with('success', 'تم تسجيل المولود وربطه ببيانات الأب بنجاح!');
+        return redirect()->back()->with('success', 'تم تسجيل الطفل وربطه ببيانات الأب بنجاح!');
     }
 }

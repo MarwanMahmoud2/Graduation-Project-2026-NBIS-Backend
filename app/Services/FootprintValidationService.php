@@ -12,7 +12,7 @@ class FootprintValidationService
     /**
      * @return array{reason: string, message: string}
      */
-    public function validate(UploadedFile $image, ?int $babyId = null): array
+    public function validate(UploadedFile $image, ?int $childId = null): array
     {
         return [
             'reason' => 'ai_unavailable',

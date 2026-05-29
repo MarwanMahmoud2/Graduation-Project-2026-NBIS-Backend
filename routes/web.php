@@ -24,6 +24,9 @@ Route::get('/demo/{any?}', function () {
     return view('demo-react');
 })->where('any', '.*')->name('demo');
 
+// Web dashboard routes disabled - using React frontend
+// Uncomment these if you need Blade-based dashboards
+/*
 Route::middleware(['auth', 'verified'])->group(function () {
 
     // المسار العام بعد تسجيل الدخول
@@ -57,7 +60,7 @@ Route::middleware(['auth', 'verified', 'role:police'])->group(function () {
 // --- 👨‍👩‍👧 منطقة المستخدم/الأهل (User/Parent Pages) ---
 Route::middleware(['auth', 'verified', 'role:user'])->group(function () {
     Route::get('/user/dashboard', [ParentDashboardController::class, 'index'])->name('user.dashboard');
-    Route::get('/user/babies', [ParentDashboardController::class, 'babies'])->name('user.babies');
+    Route::get('/user/children', [ParentDashboardController::class, 'children'])->name('user.children');
     Route::post('/user/report-missing', [ParentDashboardController::class, 'reportMissing'])->name('user.reportMissing');
 });
 
@@ -68,13 +71,13 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
 
 // --- ⚡ الأكشنز المشتركة (Shared Actions) ---
 Route::middleware(['auth', 'verified', 'role:nurse,admin'])->group(function () {
-    Route::get('/babies/create', [BabyController::class, 'create'])->name('babies.create');
-    Route::post('/babies/store', [BabyController::class, 'store'])->name('babies.store');
+    Route::get('/children/create', [BabyController::class, 'create'])->name('children.create');
+    Route::post('/children/store', [BabyController::class, 'store'])->name('children.store');
 });
 
 Route::middleware(['auth', 'verified', 'role:police,admin'])->group(function () {
-    Route::post('/babies/search', [PoliceController::class, 'search'])->name('babies.search');
+    Route::post('/children/search', [PoliceController::class, 'search'])->name('children.search');
 });
+*/
 
-
-require __DIR__ . '/auth.php';
+// require __DIR__ . '/auth.php';
