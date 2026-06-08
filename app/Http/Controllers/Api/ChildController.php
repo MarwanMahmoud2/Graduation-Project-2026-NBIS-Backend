@@ -35,14 +35,20 @@ class ChildController extends Controller
             'father_national_id' => ['nullable', 'string', 'size:14'],
             'gender' => ['nullable', 'in:male,female'],
             'birth_date' => ['nullable', 'date'],
+            'estimated_age' => ['nullable', 'string', 'max:50'],
+            'found_location' => ['nullable', 'string', 'max:255'],
+            'date_found' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:1000'],
             'nfc_tag_id' => ['nullable', 'string', 'unique:children,nfc_tag_id'],
-            'footprint_image' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
+            'footprint_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
+            'child_photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
         ]);
 
         $child = $this->childRegistration->register(
             $validated,
             (int) $request->user()->id,
             $request->file('footprint_image'),
+            $request->file('child_photo'),
         );
 
         return response()->json([
@@ -61,10 +67,12 @@ class ChildController extends Controller
             'gender' => ['required', 'in:male,female'],
             'birth_date' => ['nullable', 'date'],
             'nfc_tag_id' => ['required', 'string', 'unique:children,nfc_tag_id'],
-            'footprint_image' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
+            'footprint_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
+            'child_photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:5120'],
         ]);
 
-        $imagePath = $request->file('footprint_image')->store('footprints', 'public');
+        $imagePath = $request->file('footprint_image')?->store('footprints', 'public');
+        $childPhotoPath = $request->file('child_photo')?->store('child_photos', 'public');
 
         $child = \App\Models\Child::create([
             'user_id' => Auth::id(),
@@ -73,6 +81,7 @@ class ChildController extends Controller
             'birth_date' => $validated['birth_date'],
             'nfc_tag_id' => $validated['nfc_tag_id'],
             'footprint_path' => $imagePath,
+            'child_photo_path' => $childPhotoPath,
             'status' => 'safe',
         ]);
 

@@ -10,10 +10,20 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     private const ALLOWED_ROLES = ['user', 'nurse', 'police', 'admin'];
+    private const DEFAULT_ACCOUNT_SETTINGS = [
+        'language' => 'en',
+        'notifications' => true,
+        'email_alerts' => true,
+        'two_factor' => false,
+        'login_alerts' => false,
+        'session_timeout' => 30,
+    ];
 
     /**
      * تطبيق ولي الأمر: إنشاء حساب جديد .
@@ -46,16 +56,27 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $throttleKey = Str::lower($validated['email']) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            return response()->json([
+                'message' => "Too many login attempts. Try again in {$seconds} seconds.",
+            ], 429);
+        }
 
         $user = User::where('email', $validated['email'])->first();
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
+            RateLimiter::hit($throttleKey, 60);
             return response()->json([
                 'message' => 'The provided credentials are incorrect.',
             ], 401);
         }
 
         if (! in_array($user->role, self::ALLOWED_ROLES, true)) {
+            RateLimiter::hit($throttleKey, 60);
             return response()->json([
                 'message' => 'This account role is not allowed to sign in.',
             ], 403);
@@ -65,6 +86,7 @@ class AuthController extends Controller
             $this->linkExistingChildrenToParent($user);
         }
 
+        RateLimiter::clear($throttleKey);
         $token = $user->createToken('api')->plainTextToken;
 
         return response()->json([
@@ -79,6 +101,46 @@ class AuthController extends Controller
     {
         return response()->json([
             'user' => $this->userPayload($request->user()),
+        ]);
+    }
+
+    /** Account settings for any authenticated role */
+    public function settings(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $settings = array_merge(
+            self::DEFAULT_ACCOUNT_SETTINGS,
+            is_array($user->settings) ? $user->settings : []
+        );
+
+        return response()->json([
+            'data' => $settings,
+        ]);
+    }
+
+    /** Update account settings for any authenticated role */
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'language' => ['nullable', 'string', 'in:en,ar,fr'],
+            'notifications' => ['nullable', 'boolean'],
+            'email_alerts' => ['nullable', 'boolean'],
+            'two_factor' => ['nullable', 'boolean'],
+            'login_alerts' => ['nullable', 'boolean'],
+            'session_timeout' => ['nullable', 'integer', 'in:0,15,30,60'],
+        ]);
+
+        $user = $request->user();
+        $current = array_merge(
+            self::DEFAULT_ACCOUNT_SETTINGS,
+            is_array($user->settings) ? $user->settings : []
+        );
+        $user->settings = array_merge($current, $validated);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Settings updated successfully.',
+            'data' => $user->settings,
         ]);
     }
 
@@ -101,7 +163,48 @@ class AuthController extends Controller
             'phone' => $user->phone,
             'role' => $user->role,
             'national_id' => $user->national_id,
+            'profile_photo_path' => $user->profile_photo_path,
         ];
+    }
+
+    /** Update user profile including photo */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        \Log::info('Profile update request:', [
+            'has_file' => $request->hasFile('profile_photo'),
+            'all_files' => $request->allFiles(),
+            'all_data' => $request->all(),
+            'content_type' => $request->header('Content-Type'),
+            'method' => $request->method(),
+        ]);
+
+        if ($request->has('name') && $request->input('name')) {
+            $user->name = $request->input('name');
+        }
+        if ($request->has('email') && $request->input('email')) {
+            $user->email = $request->input('email');
+        }
+        if ($request->has('phone') && $request->input('phone')) {
+            $user->phone = $request->input('phone');
+        }
+
+        if ($request->hasFile('profile_photo')) {
+            $photo = $request->file('profile_photo');
+            $path = $photo->store('profile-photos', 'public');
+            $user->profile_photo_path = $path;
+            \Log::info('Profile photo saved:', ['path' => $path]);
+        }
+
+        $user->save();
+
+        \Log::info('User saved:', ['profile_photo_path' => $user->profile_photo_path]);
+
+        return response()->json([
+            'message' => 'Profile updated successfully.',
+            'user' => $this->userPayload($user),
+        ]);
     }
 
     /**

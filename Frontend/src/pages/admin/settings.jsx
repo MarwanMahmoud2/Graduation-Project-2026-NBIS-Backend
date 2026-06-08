@@ -1,6 +1,7 @@
 // src/pages/admin/Settings.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "../../components/AdminLayout";
+import { authService } from "../../api/auth";
 
 const Toggle = ({ value, onChange }) => (
   <button onClick={() => onChange(!value)}
@@ -10,22 +11,59 @@ const Toggle = ({ value, onChange }) => (
 );
 
 export default function Settings() {
-  const [settings, setSettings] = useState({
-    language: "English",
+  const defaultSettings = {
+    language: "en",
     notifications: true,
-    emailAlerts: true,
-    twoFactor: false,
-    loginAlerts: false,
-    sessionTimeout: "30 Minutes",
+    email_alerts: true,
+    two_factor: false,
+    login_alerts: false,
+    session_timeout: 30,
+  };
+  const [settings, setSettings] = useState({
+    ...defaultSettings,
   });
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const response = await authService.getSettings();
+      setSettings({ ...defaultSettings, ...(response.data ?? {}) });
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const set = k => v => setSettings(s => ({ ...s, [k]: v }));
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await authService.updateSettings(settings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-gray-400">Loading...</div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -68,9 +106,9 @@ export default function Settings() {
               <div className="relative">
                 <select value={settings.language} onChange={e => set("language")(e.target.value)}
                   className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-gray-700 focus:border-blue-400 appearance-none bg-white pr-8">
-                  <option>English</option>
-                  <option>العربية</option>
-                  <option>Français</option>
+                  <option value="en">English</option>
+                  <option value="ar">العربية</option>
+                  <option value="fr">Français</option>
                 </select>
                 <svg className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
                   <polyline points="6 9 12 15 18 9" />
@@ -93,7 +131,7 @@ export default function Settings() {
                 <p className="text-sm font-medium text-gray-700">Email Alerts</p>
                 <p className="text-xs text-gray-400">Receive Important Updates Via Email</p>
               </div>
-              <Toggle value={settings.emailAlerts} onChange={set("emailAlerts")} />
+              <Toggle value={settings.email_alerts} onChange={set("email_alerts")} />
             </div>
           </div>
 
@@ -118,7 +156,7 @@ export default function Settings() {
                 <p className="text-sm font-medium text-gray-700">Two-Factor Authentication</p>
                 <p className="text-xs text-gray-400">Add An Extra Layer Of Security To Your Account</p>
               </div>
-              <Toggle value={settings.twoFactor} onChange={set("twoFactor")} />
+              <Toggle value={settings.two_factor} onChange={set("two_factor")} />
             </div>
 
             {/* Login Alerts */}
@@ -127,7 +165,7 @@ export default function Settings() {
                 <p className="text-sm font-medium text-gray-700">Login Alerts</p>
                 <p className="text-xs text-gray-400">Get Notified When Someone Logs Into Your Account</p>
               </div>
-              <Toggle value={settings.loginAlerts} onChange={set("loginAlerts")} />
+              <Toggle value={settings.login_alerts} onChange={set("login_alerts")} />
             </div>
 
             {/* Session Timeout */}
@@ -140,12 +178,12 @@ export default function Settings() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                 </svg>
-                <select value={settings.sessionTimeout} onChange={e => set("sessionTimeout")(e.target.value)}
+                <select value={String(settings.session_timeout)} onChange={e => set("session_timeout")(Number(e.target.value))}
                   className="border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none text-gray-700 focus:border-blue-400 appearance-none bg-white pr-8">
-                  <option>15 Minutes</option>
-                  <option>30 Minutes</option>
-                  <option>1 Hour</option>
-                  <option>Never</option>
+                  <option value="15">15 Minutes</option>
+                  <option value="30">30 Minutes</option>
+                  <option value="60">1 Hour</option>
+                  <option value="0">Never</option>
                 </select>
                 <svg className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
                   <polyline points="6 9 12 15 18 9" />
@@ -156,17 +194,17 @@ export default function Settings() {
 
           {/* Buttons */}
           <div className="flex justify-end gap-3">
-            <button className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold px-5 py-2.5 rounded-xl transition">
+            <button onClick={loadSettings} className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold px-5 py-2.5 rounded-xl transition">
               <span className="w-5 h-5 rounded-full bg-gray-400 text-white flex items-center justify-center text-xs">✕</span>
               Cancel
             </button>
-            <button onClick={handleSave}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-md shadow-blue-100">
+            <button onClick={handleSave} disabled={loading}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-md shadow-blue-100 disabled:opacity-50 disabled:cursor-not-allowed">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                 <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
               </svg>
-              Save Change
+              {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>

@@ -6,7 +6,7 @@ function Welcome() {
   const navigate = useNavigate();
   return (
     <AuthLayout>
-      <img src={logo} alt="NBIS Logo" className="w-[194px] h-[180px] object-contain mb-4" />
+      <img src={logo} alt="NBIS Logo" className="w-[194px] h-[180px] object-contain mb-6" />
       <h1 className="text-3xl font-bold text-gray-800 text-center mb-2">Welcome to NBIS</h1>
       <p className="text-center mb-10 text-gray-500 text-sm">Newborn Biometric Identification System</p>
       <div className="w-full max-w-md space-y-4">

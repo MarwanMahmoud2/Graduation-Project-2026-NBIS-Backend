@@ -1,16 +1,19 @@
 // src/pages/admin/Profile.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { useAuth } from "../../context/AuthContext";
 import { authService } from "../../api/auth";
 
-export default function Profile() {
-  const { user, updateUser } = useAuth();
+export default function Profile({ layout: Layout = AdminLayout }) {
+  const { user, getCurrentUser } = useAuth();
   const [form, setForm] = useState({ fullName: "", email: "", phone: "", currentPass: "", newPass: "", confirmPass: "" });
   const [show, setShow] = useState({ current: false, new: false, confirm: false });
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     if (user) {
@@ -22,8 +25,21 @@ export default function Profile() {
         newPass: "",
         confirmPass: "",
       });
+      if (user.profile_photo_path) {
+        setPhotoPreview(`http://localhost:8000/storage/${user.profile_photo_path}`);
+        console.log('Profile photo path:', user.profile_photo_path);
+        console.log('Photo preview URL:', `http://localhost:8000/storage/${user.profile_photo_path}`);
+      }
     }
   }, [user]);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfilePhoto(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
   const toggle = k => setShow(s => ({ ...s, [k]: !s[k] }));
@@ -32,17 +48,37 @@ export default function Profile() {
     setErrors({});
     setLoading(true);
     try {
-      // Update profile info
-      await authService.updateProfile({
-        name: form.fullName,
-        email: form.email,
-        phone: form.phone,
-      });
+      // Update profile info (only send non-empty fields)
+      const formData = new FormData();
+      if (form.fullName) formData.append('name', form.fullName);
+      if (form.email) formData.append('email', form.email);
+      if (form.phone) formData.append('phone', form.phone);
+      if (profilePhoto) {
+        formData.append('profile_photo', profilePhoto);
+      }
 
-      // Update password if provided
+      console.log('Form data:', { fullName: form.fullName, email: form.email, phone: form.phone, profilePhoto });
+      console.log('FormData entries:', Array.from(formData.entries()));
+
+      // Only call updateProfile if there's something to update
+      if (form.fullName || form.email || form.phone || profilePhoto) {
+        console.log('Sending profile update with data:', formData);
+        const result = await authService.updateProfile(formData);
+        console.log('Profile update result:', result);
+      } else {
+        console.log('No data to update, skipping profile update');
+      }
+
+      // Update password if provided (requires all 3 fields)
       if (form.newPass) {
+        if (!form.currentPass) {
+          setErrors({ currentPass: "Current password is required" });
+          setLoading(false);
+          return;
+        }
         if (form.newPass !== form.confirmPass) {
           setErrors({ password: "Passwords do not match" });
+          setLoading(false);
           return;
         }
         await authService.updatePassword({
@@ -53,12 +89,14 @@ export default function Profile() {
       }
 
       // Refresh user data
-      const userData = await authService.getCurrentUser();
-      updateUser(userData.user);
+      await getCurrentUser();
 
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
+      console.error('Profile update error:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
       setErrors(err.response?.data || { general: "Failed to update profile" });
     } finally {
       setLoading(false);
@@ -81,23 +119,30 @@ export default function Profile() {
   );
 
   return (
-    <AdminLayout>
+    <Layout>
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
           {/* Avatar */}
           <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
             <div className="relative">
-              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl">M</div>
-              <button className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center shadow">
+              {photoPreview ? (
+                <img src={photoPreview} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-blue-200" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+              )}
+              <button onClick={() => fileRef.current?.click()} className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center shadow hover:bg-blue-700 transition">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                   <circle cx="12" cy="13" r="4" />
                 </svg>
               </button>
+              <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
             </div>
             <div>
-              <p className="font-bold text-gray-800">Mohamed Elsaeed</p>
-              <span className="bg-blue-100 text-blue-600 text-xs font-semibold px-2.5 py-0.5 rounded-full">Admin</span>
+              <p className="font-bold text-gray-800">{user?.name || 'User'}</p>
+              <span className="bg-blue-100 text-blue-600 text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize">{user?.role || 'Admin'}</span>
             </div>
           </div>
 
@@ -190,6 +235,6 @@ export default function Profile() {
           )}
         </div>
       </div>
-    </AdminLayout>
+    </Layout>
   );
 }

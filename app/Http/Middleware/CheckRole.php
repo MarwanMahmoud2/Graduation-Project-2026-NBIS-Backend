@@ -17,8 +17,10 @@ class CheckRole
      */
     public function handle(Request $request, Closure $next, string ...$role): Response
     {
-        // 1. التأكد إن المستخدم مسجل دخول أصلاً
-        if (! auth()->check()) {
+        $user = $request->user();
+
+        // 1. التأكد إن المستخدم مسجل دخول أصلاً (Sanctum/API compatible)
+        if (! $user) {
             if ($this->expectsApiResponse($request)) {
                 return response()->json(['message' => 'Unauthenticated.'], 401);
             }
@@ -27,7 +29,7 @@ class CheckRole
         }
 
         // 2. التأكد إن الـ role بتاع المستخدم هو نفسه الـ role المطلوب للمسار ده
-        if (! in_array(auth()->user()->role, $role, true)) {
+        if (! in_array($user->role, $role, true)) {
             $message = 'Unauthorized action. This area is for ' . implode(', ', $role) . ' only.';
 
             if ($this->expectsApiResponse($request)) {

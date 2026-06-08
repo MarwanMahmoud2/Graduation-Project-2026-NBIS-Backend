@@ -122,8 +122,7 @@ export default function NurseLayout({ children }) {
       {/* Sidebar */}
       <aside className="w-[190px] shrink-0 bg-white border-r border-gray-100 flex flex-col py-6 px-3 shadow-sm">
         <div className="flex flex-col items-center mb-8">
-          <img src={logo} alt="NBIS" className="w-20 h-20 object-contain" />
-          <p className="text-xs text-gray-400 -mt-1">Newborn Biometric ID</p>
+          <img src={logo} alt="NBIS" className="w-40 h-40 object-contain" />
         </div>
         <nav className="flex-1 space-y-0.5">
           {navItems.map(item => (

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { adminService } from "../api/admin";
 import logo from "../assets/Logo 1.png";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
@@ -31,10 +32,20 @@ const icons = {
 // ── Sidebar Nav Items ──────────────────────────────────────────────────────
 const navItems = [
   { label: "Dashboard", icon: "dashboard", path: "/admin/dashboard" },
-  { label: "Verification Logs", icon: "logs", path: "/admin/verification-logs" },
+  {
+    label: "Verification Logs", icon: "logs", path: "/admin/verification-logs",
+    children: [
+      { label: "System Logs", path: "/admin/verification-logs" },
+      { label: "Missing Childs", path: "/admin/missing-children" },
+    ],
+  },
   {
     label: "Children List", icon: "infants", path: "/admin/children",
-    subIcon: "logs",
+    children: [
+      { label: "Register Child", path: "/admin/children/register" },
+      { label: "View Children", path: "/admin/children" },
+      { label: "Report Missing", path: "/admin/report-missing" },
+    ],
   },
   {
     label: "Members", icon: "members", path: "/admin/members",
@@ -54,16 +65,10 @@ const navItems = [
 ];
 
 // ── Search Modal ───────────────────────────────────────────────────────────
-const recentSearches = [
-  { name: "Tia Ahmed", id: "ID:304010112", mother: "Eman Samy" },
-  { name: "Rahma Saber", id: "ID:404011112", mother: "May Ebrahim" },
-];
-
 function SearchModal({ onClose }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const filters = ["All", "Children", "Reports", "Organizations", "Users"];
-  const hasResults = query.trim() === "";
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-16"
@@ -97,20 +102,8 @@ function SearchModal({ onClose }) {
             <>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-semibold text-gray-500">Recent Searches</p>
-                <button className="text-xs text-blue-500 hover:underline">Clear History</button>
               </div>
-              {recentSearches.map((r, i) => (
-                <div key={i} className="flex items-start gap-3 py-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" className="mt-0.5 shrink-0">
-                    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  <div className="text-xs text-gray-600">
-                    <p className="font-semibold text-gray-700">• {r.name}</p>
-                    <p className="text-gray-400">• {r.id}</p>
-                    <p className="text-gray-400">• {r.mother}</p>
-                  </div>
-                </div>
-              ))}
+              <p className="text-xs text-gray-400 py-6 text-center">No search history available.</p>
             </>
           )}
         </div>
@@ -120,7 +113,7 @@ function SearchModal({ onClose }) {
 }
 
 // ── Notifications Dropdown ─────────────────────────────────────────────────
-function NotifDropdown({ onClose }) {
+function NotifDropdown({ onClose, notifications, onMarkRead, onViewAll }) {
   return (
     <div className="absolute right-0 top-12 w-72 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -132,34 +125,43 @@ function NotifDropdown({ onClose }) {
         </button>
       </div>
       <div className="px-4 py-3">
-        <div className="flex items-start gap-3 p-2 rounded-xl bg-red-50 border border-red-100">
-          <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <div className="flex justify-between">
-              <p className="text-xs font-semibold text-gray-700">Missing Child Alert</p>
-              <p className="text-xs text-gray-400">2 min ago</p>
+        {notifications.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-6">No new notifications.</p>
+        ) : (
+          notifications.map((item) => (
+            <div key={item.id} className="flex items-start gap-3 p-2 rounded-xl bg-blue-50 border border-blue-100 mb-2 last:mb-0">
+              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between">
+                  <p className="text-xs font-semibold text-gray-700">{item.title}</p>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">{item.message}</p>
+                {!item.is_read && (
+                  <button
+                    onClick={() => onMarkRead(item.id)}
+                    className="mt-1.5 text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Mark Read
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-0.5">Ahmed Mohamed has been reported missing</p>
-            <button className="mt-1.5 text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition">
-              View Details
-            </button>
-          </div>
-        </div>
-        <p className="text-xs text-gray-400 mt-2 text-center">Here You Will See Notifications Related To Your Account.</p>
+          ))
+        )}
       </div>
       <div className="border-t border-gray-100 px-4 py-2.5 text-center">
-        <button className="text-xs text-blue-500 hover:underline font-medium">View All Notifications</button>
+        <button onClick={onViewAll} className="text-xs text-blue-500 hover:underline font-medium">View All Notifications</button>
       </div>
     </div>
   );
 }
 
 // ── Profile Dropdown ───────────────────────────────────────────────────────
-function ProfileDropdown({ navigate, onClose, logout }) {
+function ProfileDropdown({ navigate, onClose, logout, user }) {
   return (
     <div className="absolute right-0 top-12 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
       {[
@@ -177,8 +179,8 @@ function ProfileDropdown({ navigate, onClose, logout }) {
       ))}
       <div className="border-t border-gray-100 mx-3 my-1" />
       <div className="px-4 py-2">
-        <p className="text-xs font-semibold text-gray-700">Mohamed Elsaeed</p>
-        <p className="text-xs text-blue-500">Admin</p>
+        <p className="text-xs font-semibold text-gray-700">{user?.name || 'User'}</p>
+        <p className="text-xs text-blue-500 capitalize">{user?.role || 'Admin'}</p>
       </div>
       <div className="border-t border-gray-100 mx-3 my-1" />
       <button onClick={async () => { await logout(); navigate('/login'); onClose(); }}
@@ -196,11 +198,18 @@ function ProfileDropdown({ navigate, onClose, logout }) {
 export default function AdminLayout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
-  const [openMenus, setOpenMenus] = useState({ Members: true, Organizations: false });
+  const { logout, user } = useAuth();
+  const [openMenus, setOpenMenus] = useState({
+    "Verification Logs": false,
+    "Children List": false,
+    Members: false,
+    Organizations: false,
+  });
   const [showSearch, setShowSearch] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -213,20 +222,62 @@ export default function AdminLayout({ children }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const toggleMenu = (label) => setOpenMenus(p => ({ ...p, [label]: !p[label] }));
+  const loadNotifications = async () => {
+    try {
+      const [notificationsResponse, unreadResponse] = await Promise.all([
+        adminService.getNotifications({ per_page: 5 }),
+        adminService.getUnreadNotificationsCount(),
+      ]);
+      setNotifications(notificationsResponse.data ?? []);
+      setUnreadCount(unreadResponse.data?.unread_count ?? 0);
+    } catch (error) {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  };
+
+  const toggleMenu = (label) => setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
   const isActive = (path) => location.pathname === path;
+  const isPathUnder = (path) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
   const isParentActive = (item) =>
-    item.children?.some(c => location.pathname === c.path) || location.pathname === item.path;
+    item.children?.some((c) => isPathUnder(c.path)) || (isActive(item.path) && !item.children);
+
+  useEffect(() => {
+    setOpenMenus((prev) => {
+      const next = { ...prev };
+      navItems.forEach((item) => {
+        if (!item.children) return;
+        if (isParentActive(item)) {
+          next[item.label] = true;
+        }
+      });
+      return next;
+    });
+  }, [location.pathname]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const handleMarkNotificationRead = async (id) => {
+    try {
+      await adminService.markNotificationRead(id);
+      setNotifications((prev) => prev.map((item) => item.id === id ? { ...item, is_read: true } : item));
+      setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+    } catch (error) {
+      // keep UI stable on network failure
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
       {/* ── Sidebar ── */}
       <aside className="w-[190px] shrink-0 bg-white border-r border-gray-100 flex flex-col py-6 px-3 shadow-sm">
         {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <img src={logo} alt="NBIS" className="w-20 h-20 object-contain" />
-          <p className="text-xs text-gray-400 -mt-1">Newborn Biometric ID</p>
-        </div>
+        <button onClick={() => navigate('/admin/dashboard')} className="flex flex-col items-center mb-8 cursor-pointer hover:opacity-80 transition">
+          <img src={logo} alt="NBIS" className="w-40 h-40 object-contain" />
+        </button>
 
         {/* Nav */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto">
@@ -235,7 +286,7 @@ export default function AdminLayout({ children }) {
               <button
                 onClick={() => item.children ? toggleMenu(item.label) : navigate(item.path)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
-                  ${isParentActive(item) && !item.children
+                  ${isActive(item.path) && !item.children
                     ? "bg-blue-600 text-white shadow-md shadow-blue-100"
                     : isParentActive(item) && item.children
                     ? "text-blue-600 bg-blue-50"
@@ -298,18 +349,22 @@ export default function AdminLayout({ children }) {
             <div ref={profileRef} className="relative">
               <button onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }}
                 className="flex items-center gap-2 hover:bg-gray-50 px-2 py-1.5 rounded-xl transition">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+                  {user?.profile_photo_path ? (
+                    <img src={`http://localhost:8000/storage/${user.profile_photo_path}`} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  )}
                 </div>
-                <span className="text-sm font-medium text-gray-700">Mohamed Elsaeed</span>
+                <span className="text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
                   <polyline points="6 9 12 15 18 9" />
                 </svg>
               </button>
-              {showProfile && <ProfileDropdown navigate={navigate} onClose={() => setShowProfile(false)} logout={logout} />}
+              {showProfile && <ProfileDropdown navigate={navigate} onClose={() => setShowProfile(false)} logout={logout} user={user} />}
             </div>
 
             <div ref={notifRef} className="relative">
@@ -319,9 +374,23 @@ export default function AdminLayout({ children }) {
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </button>
-              {showNotif && <NotifDropdown onClose={() => setShowNotif(false)} />}
+              {showNotif && (
+                <NotifDropdown
+                  onClose={() => setShowNotif(false)}
+                  notifications={notifications}
+                  onMarkRead={handleMarkNotificationRead}
+                  onViewAll={() => {
+                    setShowNotif(false);
+                    navigate("/admin/notifications");
+                  }}
+                />
+              )}
             </div>
           </div>
         </header>

@@ -100,7 +100,9 @@ export const AuthProvider = ({ children }) => {
   const getCurrentUser = async () => {
     try {
       const response = await authService.getCurrentUser();
+      console.log('getCurrentUser response:', response);
       setUser(response.user);
+      localStorage.setItem('nbis_user', JSON.stringify(response.user));
       return response.user;
     } catch (error) {
       if (error.response?.status === 401) {

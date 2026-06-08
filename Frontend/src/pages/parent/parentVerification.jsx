@@ -98,7 +98,7 @@ function ReportsTab() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
-                {["Child Name", "Report Type", "Priority", "Status", "Date", "Actions"].map(h => (
+                {["Child Name", "Reported by", "Priority", "Status", "Date", "Actions"].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -126,7 +126,10 @@ function ReportsTab() {
                   </td>
                   <td className="px-5 py-3 text-sm text-gray-400">{r.date}</td>
                   <td className="px-5 py-3">
-                    <button className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg transition">
+                    <button 
+                      onClick={() => {/* TODO: Add view details functionality */}}
+                      className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg transition"
+                    >
                       View Details
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />

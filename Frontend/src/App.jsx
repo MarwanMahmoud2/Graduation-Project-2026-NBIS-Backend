@@ -8,16 +8,27 @@ import ForgotPassword from "./pages/forgotpassword";
 import AdminDashboard from "./pages/admin/adminDashboard";
 import UserList from "./pages/admin/userList";
 import AddUser from "./pages/admin/addUser";
-import Profile from "./pages/admin/profile";
+import Profile from "./pages/shared/Profile";
 import Settings from "./pages/admin/settings";
+import VerificationLogs from "./pages/admin/verificationLogs";
+import NotificationsPage from "./pages/admin/notifications";
+import AdminChildrenList from "./pages/admin/childrenList";
+import Organization from "./pages/admin/organization";
+import OrganizationHospital from "./pages/admin/organizationHospital";
+import OrganizationPolice from "./pages/admin/organizationPolice";
+import RolesPermissions from "./pages/admin/rolesPermissions";
+import ReportMissing from "./pages/admin/reportMissing";
 import NurseDashboard from "./pages/nurse/nurseDashboard";
-import RegisterNewborn from "./pages/nurse/registerNewborn";
 import ChildrenList from "./pages/nurse/childrenList";
 import PoliceDashboard from "./pages/police/policeDashboard";
-import PoliceVerificationLogs from "./pages/police/policeVerificationLogs";
 import ParentDashboard from "./pages/parent/ParentDashboard";
 import ParentVerification from "./pages/parent/ParentVerification";
 import MyChildren from "./pages/parent/MyChildren";
+import RegisterChildForm from "./pages/shared/RegisterChildForm";
+import VerificationLogsShared from "./pages/shared/VerificationLogs";
+import NurseLayout from "./components/nurseLayout";
+import AdminLayout from "./components/AdminLayout";
+import PoliceLayout from "./components/policeLayout";
 
 
 function App() {
@@ -57,7 +68,7 @@ function App() {
             path="/admin/profile" 
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <Profile />
+                <Profile layout={AdminLayout} />
               </ProtectedRoute>
             } 
           />
@@ -66,6 +77,86 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <Settings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/verification-logs" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <VerificationLogs />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/notifications" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <NotificationsPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/missing-children" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <VerificationLogsShared layout={AdminLayout} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/children" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminChildrenList />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/children/register" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <RegisterChildForm layout={AdminLayout} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/report-missing" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <ReportMissing />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/organizations" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <Organization />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/organizations/hospital" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <OrganizationHospital />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/organizations/police" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <OrganizationPolice />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/roles" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <RolesPermissions />
               </ProtectedRoute>
             } 
           />
@@ -89,7 +180,7 @@ function App() {
             path="/nurse/children/register" 
             element={
               <ProtectedRoute allowedRoles={['nurse', 'admin']}>
-                <RegisterNewborn />
+                <RegisterChildForm layout={NurseLayout} />
               </ProtectedRoute>
             } 
           />
@@ -105,7 +196,7 @@ function App() {
             path="/police/verification-logs" 
             element={
               <ProtectedRoute allowedRoles={['police', 'admin']}>
-                <PoliceVerificationLogs />
+                <VerificationLogsShared layout={PoliceLayout} />
               </ProtectedRoute>
             }
           />

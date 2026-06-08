@@ -19,9 +19,10 @@ class ChildRegistrationService
     /**
      * @param  array{name: string, mother_name: ?string, father_name: ?string, father_phone: ?string, father_national_id: ?string, gender: ?string, birth_date: ?string, nfc_tag_id: ?string}  $data
      */
-    public function register(array $data, int $nurseId, UploadedFile $footprintImage): Child
+    public function register(array $data, int $nurseId, ?UploadedFile $footprintImage, ?UploadedFile $childPhoto = null): Child
     {
-        $imagePath = $footprintImage->store('footprints', 'public');
+        $footprintPath = $footprintImage?->store('footprints', 'public');
+        $childPhotoPath = $childPhoto?->store('child_photos', 'public');
 
         $parentUserId = null;
         if (isset($data['father_national_id'])) {
@@ -40,7 +41,12 @@ class ChildRegistrationService
             'gender' => $data['gender'] ?? null,
             'birth_date' => $data['birth_date'] ?? null,
             'nfc_tag_id' => $data['nfc_tag_id'] ?? null,
-            'footprint_path' => $imagePath,
+            'footprint_path' => $footprintPath,
+            'child_photo_path' => $childPhotoPath,
+            'estimated_age' => $data['estimated_age'] ?? null,
+            'found_location' => $data['found_location'] ?? null,
+            'date_found' => $data['date_found'] ?? null,
+            'notes' => $data['notes'] ?? null,
             'status' => 'safe',
             'nurse_id' => $nurseId,
             'user_id' => $parentUserId,

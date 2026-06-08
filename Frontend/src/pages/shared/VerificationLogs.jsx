@@ -1,8 +1,181 @@
-// src/pages/police/PoliceVerificationLogs.jsx
-import { useState, useRef } from "react";
+// src/pages/shared/VerificationLogs.jsx
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import PoliceLayout from "../../components/policeLayout";
 import { childService } from "../../api/child";
+import client from "../../api/client";
+
+// ── CHILD DETAIL MODAL ─────────────────────────────────────────────────────
+function ChildDetailModal({ child, onClose }) {
+  if (!child) return null;
+
+  const childPhotoUrl = child.child_photo_path 
+    ? `http://localhost:8000/storage/${child.child_photo_path}`
+    : null;
+  const footprintUrl = child.footprint_path
+    ? `http://localhost:8000/storage/${child.footprint_path}`
+    : null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800">Child Details</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <div className="grid grid-cols-2 gap-6">
+            {/* Child Photo */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 mb-3">Child Photo</h3>
+              {childPhotoUrl ? (
+                <img src={childPhotoUrl} alt={child.child_name} className="w-full h-48 object-cover rounded-xl border border-gray-200" />
+              ) : (
+                <div className="w-full h-48 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center">
+                  <p className="text-gray-400 text-sm">No photo available</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footprint */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 mb-3">Footprint</h3>
+              {footprintUrl ? (
+                <img src={footprintUrl} alt="Footprint" className="w-full h-48 object-cover rounded-xl border border-gray-200" />
+              ) : (
+                <div className="w-full h-48 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center">
+                  <p className="text-gray-400 text-sm">No footprint available</p>
+                </div>
+              )}
+            </div>
+
+            {/* Child Information */}
+            <div className="col-span-2">
+              <h3 className="text-sm font-semibold text-gray-600 mb-3">Child Information</h3>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Name</p>
+                    <p className="text-sm font-medium text-gray-800">{child.child_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Gender</p>
+                    <p className="text-sm font-medium text-gray-800 capitalize">{child.gender || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Birth Date</p>
+                    <p className="text-sm font-medium text-gray-800">{child.birth_date || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Estimated Age</p>
+                    <p className="text-sm font-medium text-gray-800">{child.estimated_age || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Status</p>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      child.status === 'safe' ? 'bg-blue-100 text-blue-600' :
+                      child.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
+                      child.status === 'verified' ? 'bg-green-100 text-green-600' :
+                      child.status === 'missing' ? 'bg-red-100 text-red-500' :
+                      'bg-gray-100 text-gray-500'
+                    }`}>
+                      {child.status}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">NFC Tag ID</p>
+                    <p className="text-sm font-medium text-gray-800">{child.nfc_tag_id || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Mother's Name</p>
+                    <p className="text-sm font-medium text-gray-800">{child.mother_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Father's Name</p>
+                    <p className="text-sm font-medium text-gray-800">{child.father_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Father's Phone</p>
+                    <p className="text-sm font-medium text-gray-800">{child.father_phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Father's National ID</p>
+                    <p className="text-sm font-medium text-gray-800">{child.father_national_id || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Information */}
+            <div className="col-span-2">
+              <h3 className="text-sm font-semibold text-gray-600 mb-3">Additional Information</h3>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Found Location</p>
+                    <p className="text-sm font-medium text-gray-800">{child.found_location || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Date Found</p>
+                    <p className="text-sm font-medium text-gray-800">{child.date_found || 'N/A'}</p>
+                  </div>
+                </div>
+                {child.notes && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Notes</p>
+                    <p className="text-sm font-medium text-gray-800 mt-1">{child.notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Parent Information */}
+            {child.parent && (
+              <div className="col-span-2">
+                <h3 className="text-sm font-semibold text-gray-600 mb-3">Parent Information</h3>
+                <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500">Parent Name</p>
+                      <p className="text-sm font-medium text-gray-800">{child.parent.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Phone</p>
+                      <p className="text-sm font-medium text-gray-800">{child.parent.phone || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Report Information */}
+            <div className="col-span-2">
+              <h3 className="text-sm font-semibold text-gray-600 mb-3">Report Information</h3>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Reported By</p>
+                    <p className="text-sm font-medium text-gray-800 capitalize">{child.type}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Date</p>
+                    <p className="text-sm font-medium text-gray-800">{child.date}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Shared Tab Bar ─────────────────────────────────────────────────────────
 function TabBar({ active, setActive }) {
@@ -21,35 +194,44 @@ function TabBar({ active, setActive }) {
 }
 
 // ── REPORTS TAB ────────────────────────────────────────────────────────────
-const reports = [
-  { name: "Tia Ahmed", id: "ID:304010112", type: "Missing Child", priority: "High", status: "New", date: "April 2026", avatar: "T" },
-  { name: "Randa Elsaeed", id: "ID:404011112", type: "Suspicious Case", priority: "Medium", status: "Under Investigation", date: "April 2026", avatar: "R" },
-  { name: "Toto Elsaeed", id: "ID:504022132", type: "Identity Issue", priority: "Verified", status: "Resolved", date: "March 2026", avatar: "T" },
-  { name: "Marim Elsaeed", id: "ID:306080112", type: "Identity Issue", priority: "Verified", status: "Closed", date: "March 2026", avatar: "M" },
-];
-
-const priorityStyle = {
-  High: "bg-red-100 text-red-500",
-  Medium: "bg-yellow-100 text-yellow-600",
-  Verified: "bg-green-100 text-green-600",
-};
-
 const statusStyle = {
-  New: "bg-blue-100 text-blue-600",
-  "Under Investigation": "bg-orange-100 text-orange-500",
-  Resolved: "bg-green-100 text-green-600",
-  Closed: "bg-gray-100 text-gray-500",
+  safe: "bg-blue-100 text-blue-600",
+  pending: "bg-yellow-100 text-yellow-600",
+  verified: "bg-green-100 text-green-600",
+  missing: "bg-red-100 text-red-500",
 };
 
 function ReportsTab() {
   const [search, setSearch] = useState("");
-  const [reportFilter, setReportFilter] = useState("All Reports");
+  const [reportFilter, setReportFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("All Status");
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedChild, setSelectedChild] = useState(null);
+
+  useEffect(() => {
+    const loadReports = async () => {
+      setLoading(true);
+      try {
+        const response = await client.get("/verification-logs");
+        setReports(response.data?.data ?? []);
+      } catch (error) {
+        setReports([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadReports();
+  }, []);
 
   const filtered = reports.filter(r => {
-    const matchSearch = r.name.toLowerCase().includes(search.toLowerCase()) || r.id.includes(search);
-    const matchReport = reportFilter === "All Reports" || r.type === reportFilter;
-    const matchStatus = statusFilter === "All Status" || r.status === statusFilter;
+    const typeValue = (r.type ?? "").toLowerCase();
+    const nameValue = (r.child_name ?? "").toLowerCase();
+    const statusValue = r.status ?? "";
+    const matchSearch = nameValue.includes(search.toLowerCase());
+    const matchReport = reportFilter === "all" || typeValue === reportFilter;
+    const matchStatus = statusFilter === "All Status" || statusValue === statusFilter;
     return matchSearch && matchReport && matchStatus;
   });
 
@@ -62,15 +244,15 @@ function ReportsTab() {
           </svg>
           <input value={search} onChange={e => setSearch(e.target.value)}
             className="text-sm outline-none text-gray-700 placeholder-gray-400 bg-transparent flex-1"
-            placeholder="Search By Infant Name Or ID..." />
+            placeholder="Search By Child Name Or ID..." />
         </div>
-        {[{ val: reportFilter, set: setReportFilter, opts: ["All Reports", "Missing Child", "Suspicious Case", "Identity Issue"] },
-          { val: statusFilter, set: setStatusFilter, opts: ["All Status", "New", "Under Investigation", "Resolved", "Closed"] }
+        {[{ val: reportFilter, set: setReportFilter, opts: ["all", "admin", "parent"] },
+          { val: statusFilter, set: setStatusFilter, opts: ["All Status", "safe", "pending", "verified", "missing"] }
         ].map(({ val, set, opts }, i) => (
           <div key={i} className="relative">
             <select value={val} onChange={e => set(e.target.value)}
               className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none text-gray-600 appearance-none bg-white pr-8 focus:border-blue-400">
-              {opts.map(o => <option key={o}>{o}</option>)}
+              {opts.map(o => <option key={o} value={o}>{o === "all" ? "All Reports" : o}</option>)}
             </select>
             <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
               <polyline points="6 9 12 15 18 9" />
@@ -83,41 +265,51 @@ function ReportsTab() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-100">
-              {["Child Name", "Report Type", "Priority", "Status", "Date.", "Actions"].map(h => (
+              {["Child Name", "Reported by", "Verification Type", "Status", "Date", "Actions"].map(h => (
                 <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r, i) => (
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="px-5 py-8 text-center text-sm text-gray-400">Loading reports...</td>
+              </tr>
+            ) : filtered.map((r, i) => (
               <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">{r.avatar}</div>
+                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">
+                      {(r.child_name?.[0] ?? "C").toUpperCase()}
+                    </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">{r.name}</p>
-                      <p className="text-xs text-gray-400">{r.id}</p>
+                      <p className="text-sm font-medium text-gray-700">{r.child_name}</p>
                     </div>
                   </div>
                 </td>
                 <td className="px-5 py-3 text-sm text-gray-500">{r.type}</td>
+                <td className="px-5 py-3 text-sm text-gray-500 capitalize">{r.type}</td>
                 <td className="px-5 py-3">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${priorityStyle[r.priority]}`}>{r.priority}</span>
-                </td>
-                <td className="px-5 py-3">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyle[r.status]}`}>{r.status}</span>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyle[r.status] ?? "bg-gray-100 text-gray-500"}`}>{r.status}</span>
                 </td>
                 <td className="px-5 py-3 text-sm text-gray-400">{r.date}</td>
                 <td className="px-5 py-3">
-                  <button className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg transition">
-                    View Details
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
-                    </svg>
+                  <button 
+                    onClick={() => setSelectedChild(r)}
+                    className="text-xs text-blue-500 hover:underline"
+                  >
+                    View
                   </button>
                 </td>
               </tr>
             ))}
+            {!loading && filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-5 py-8 text-center text-sm text-gray-400">
+                  No reports found.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
         <div className="px-5 py-3 flex items-center gap-2 border-t border-gray-100">
@@ -130,6 +322,7 @@ function ReportsTab() {
           <span className="text-xs text-gray-400">1–{filtered.length}</span>
         </div>
       </div>
+      {selectedChild && <ChildDetailModal child={selectedChild} onClose={() => setSelectedChild(null)} />}
     </>
   );
 }
@@ -153,7 +346,7 @@ function ScanChildTab() {
     setError(null);
     try {
       const formData = new FormData();
-      formData.append('footprint', file);
+      formData.append('fingerprint_image', file);
       
       const response = await childService.validateFootprint(formData);
       setResult(response);
@@ -220,21 +413,19 @@ function ScanChildTab() {
                 <p className="text-sm text-gray-600">{error}</p>
               </div>
             )}
-            {result && result.match && (
+            {result && result.reason === "verified" && (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-5 w-full">
                 <p className="font-bold text-green-600 flex items-center gap-2 mb-3">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
                   Match Found
                 </p>
                 <div className="space-y-1.5 text-sm">
-                  <p><span className="text-gray-500">Name :</span> <span className="font-semibold text-gray-800">{result.child?.name || 'N/A'}</span></p>
-                  <p><span className="text-gray-500">Mother :</span> <span className="font-semibold text-gray-800">{result.child?.mother_name || 'N/A'}</span></p>
-                  <p><span className="text-gray-500">Status :</span> <span className="font-semibold text-green-600">{result.child?.status || 'Verified'}</span></p>
-                  <p><span className="text-gray-500">Case ID :</span> <span className="font-semibold text-gray-800">{result.child?.id || 'N/A'}</span></p>
+                  <p><span className="text-gray-500">Status :</span> <span className="font-semibold text-green-600">Verified</span></p>
+                  <p><span className="text-gray-500">Message :</span> <span className="font-semibold text-gray-800">{result.message || 'Matched successfully'}</span></p>
                 </div>
               </div>
             )}
-            {result && result.missing && (
+            {result && result.reason === "not_found" && (
               <div className="bg-red-50 border border-red-200 rounded-2xl p-5 w-full">
                 <p className="font-bold text-red-500 flex items-center gap-2 mb-3">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2">
@@ -243,13 +434,11 @@ function ScanChildTab() {
                   Reported as Missing
                 </p>
                 <div className="space-y-1.5 text-sm">
-                  <p className="text-gray-500">This Child Is Listed As Missing</p>
-                  <p><span className="text-gray-500">Last Report :</span> <span className="font-semibold text-gray-800">{result.last_report || 'N/A'}</span></p>
-                  <p><span className="text-gray-500">Case ID :</span> <span className="font-semibold text-gray-800">{result.case_id || 'N/A'}</span></p>
+                  <p className="text-gray-500">{result.message || "No matching child was found."}</p>
                 </div>
               </div>
             )}
-            {result && !result.match && !result.missing && (
+            {result && result.reason === "ai_unavailable" && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 w-full">
                 <p className="font-bold text-yellow-600 flex items-center gap-2 mb-3">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2">
@@ -257,7 +446,7 @@ function ScanChildTab() {
                   </svg>
                   No Match Found
                 </p>
-                <p className="text-xs text-gray-500 mb-4">The System Could Not Identify The Child From The Uploaded Footprint. Make Sure The Footprint Is Clear And Try Again, Or Add The Child To The Database If Verified.</p>
+                <p className="text-xs text-gray-500 mb-4">{result.message || "AI service is currently unavailable. Please try again later."}</p>
                 <div className="flex gap-2">
                   <button onClick={handleReset}
                     className="flex items-center gap-1.5 border border-gray-200 text-gray-600 text-xs font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition">
@@ -313,12 +502,17 @@ function AddFoundChildTab() {
       try {
         const formData = new FormData();
         formData.append('name', form.childName);
-        formData.append('estimated_age', form.estimatedAge);
-        formData.append('gender', form.gender);
-        formData.append('found_location', form.foundLocation);
-        formData.append('date_found', form.dateFound);
-        formData.append('notes', form.notes);
-        if (photo) formData.append('photo', photo);
+        formData.append('mother_name', 'Unknown');
+        formData.append('father_name', 'Unknown');
+        if (form.gender) {
+          formData.append('gender', form.gender.toLowerCase());
+        }
+        if (form.dateFound) {
+          formData.append('birth_date', form.dateFound);
+        }
+        formData.append('father_phone', '');
+        formData.append('father_national_id', '');
+        if (photo) formData.append('footprint_image', photo);
 
         await childService.registerChild(formData);
         setSuccess(true);
@@ -406,8 +600,8 @@ function AddFoundChildTab() {
               <select value={form.gender} onChange={set("gender")}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none appearance-none bg-white text-gray-700 focus:border-blue-400">
                 <option value="">Male / Female</option>
-                <option>Male</option>
-                <option>Female</option>
+                <option>male</option>
+                <option>female</option>
               </select>
               <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
                 <polyline points="6 9 12 15 18 9" />
@@ -473,11 +667,11 @@ function AddFoundChildTab() {
 }
 
 // ── MAIN PAGE ──────────────────────────────────────────────────────────────
-export default function PoliceVerificationLogs() {
+export default function VerificationLogs({ layout: LayoutComponent }) {
   const [activeTab, setActiveTab] = useState("Reports");
 
   return (
-    <PoliceLayout>
+    <LayoutComponent>
       <div className="mb-4">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2">
@@ -493,6 +687,6 @@ export default function PoliceVerificationLogs() {
       {activeTab === "Reports" && <ReportsTab />}
       {activeTab === "Scan Child" && <ScanChildTab />}
       {activeTab === "Add Found Child" && <AddFoundChildTab />}
-    </PoliceLayout>
+    </LayoutComponent>
   );
 }

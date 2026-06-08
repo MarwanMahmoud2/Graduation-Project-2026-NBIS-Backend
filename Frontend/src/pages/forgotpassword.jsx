@@ -92,7 +92,7 @@ function ForgotPassword() {
 
   return (
     <AuthLayout>
-      <img src={logo} alt="NBIS Logo" className="w-[130px] h-[130px] object-contain mb-1" />
+      <img src={logo} alt="NBIS Logo" className="w-[130px] h-[130px] object-contain mb-2" />
       <p className="text-gray-400 text-xs mb-5">Newborn Biometric ID</p>
 
       <div className="w-full max-w-sm space-y-4">

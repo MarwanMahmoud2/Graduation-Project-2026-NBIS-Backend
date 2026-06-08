@@ -21,8 +21,20 @@ export const authService = {
     return response.data;
   },
 
+  // Account settings (all roles)
+  getSettings: async () => {
+    const response = await client.get('/settings');
+    return response.data;
+  },
+
+  updateSettings: async (data) => {
+    const response = await client.put('/settings', data);
+    return response.data;
+  },
+
   updateProfile: async (data) => {
-    const response = await client.put('/user/profile', data);
+    console.log('Sending to backend:', data);
+    const response = await client.post('/user/profile', data);
     return response.data;
   },
 

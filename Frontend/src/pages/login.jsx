@@ -61,7 +61,7 @@ function Login() {
 
   return (
     <AuthLayout>
-      <img src={logo} alt="NBIS Logo" className="w-[140px] h-[140px] object-contain mb-1" />
+      <img src={logo} alt="NBIS Logo" className="w-[140px] h-[140px] object-contain mb-2" />
       <p className="text-gray-400 text-xs mb-4">Newborn Biometric ID</p>
 
       <div className="w-full max-w-sm space-y-4">

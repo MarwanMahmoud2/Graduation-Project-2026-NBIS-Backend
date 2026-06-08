@@ -2,14 +2,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
+import { adminService } from "../../api/admin";
 
 export default function AddUser() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ fullName: "", email: "", phone: "", password: "", confirmPassword: "", status: "Active", role: "" });
+  const [form, setForm] = useState({ fullName: "", email: "", phone: "", password: "", confirmPassword: "", status: "active", role: "" });
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -24,10 +26,27 @@ export default function AddUser() {
     return e;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const e = validate();
     setErrors(e);
-    if (Object.keys(e).length === 0) setSuccess(true);
+    if (Object.keys(e).length === 0) {
+      setLoading(true);
+      try {
+        await adminService.createUser({
+          name: form.fullName,
+          email: form.email,
+          phone: form.phone,
+          password: form.password,
+          role: form.role,
+          status: form.status,
+        });
+        setSuccess(true);
+      } catch (err) {
+        setErrors(err.response?.data || { general: "Failed to create user" });
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   if (success) {
@@ -124,8 +143,8 @@ export default function AddUser() {
               <div className="relative">
                 <select value={form.status} onChange={set("status")}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none text-gray-700 focus:border-blue-400 appearance-none bg-white">
-                  <option>Active</option>
-                  <option>In Active</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
                 </select>
                 <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
                   <polyline points="6 9 12 15 18 9" />
@@ -140,10 +159,9 @@ export default function AddUser() {
                   className={`w-full border rounded-xl px-3 py-2.5 text-sm outline-none appearance-none bg-white
                     ${errors.role ? "border-red-400 bg-red-50 text-gray-400" : "border-gray-200 focus:border-blue-400 text-gray-700"}`}>
                   <option value="">Select Role</option>
-                  <option>Admin</option>
-                  <option>Nurse</option>
-                  <option>Parent</option>
-                  <option>Police</option>
+                  <option value="nurse">Nurse</option>
+                  <option value="user">Parent</option>
+                  <option value="police">Police</option>
                 </select>
                 <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
                   <polyline points="6 9 12 15 18 9" />
@@ -153,6 +171,9 @@ export default function AddUser() {
             </div>
           </div>
 
+          {/* General Error */}
+          {errors.general && <p className="text-red-500 text-xs text-center">⚠ {errors.general}</p>}
+
           {/* Buttons */}
           <div className="flex justify-end gap-3 mt-8">
             <button onClick={() => navigate(-1)}
@@ -160,10 +181,10 @@ export default function AddUser() {
               <span className="w-5 h-5 rounded-full bg-gray-400 text-white flex items-center justify-center text-xs">✕</span>
               Cancel
             </button>
-            <button onClick={handleSubmit}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-md shadow-blue-100">
+            <button onClick={handleSubmit} disabled={loading}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-md shadow-blue-100 disabled:opacity-50 disabled:cursor-not-allowed">
               <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">+</span>
-              Create User
+              {loading ? 'Creating...' : 'Create User'}
             </button>
           </div>
         </div>

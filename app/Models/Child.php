@@ -21,6 +21,11 @@ class Child extends Model
         'father_phone',
         'father_national_id',
         'footprint_path',
+        'child_photo_path',
+        'estimated_age',
+        'found_location',
+        'date_found',
+        'notes',
         'nfc_tag_id',
         'status',
     ];

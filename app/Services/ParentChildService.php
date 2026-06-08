@@ -49,7 +49,9 @@ class ParentChildService
     public function reportMissing(User $user, int $childId, ?string $notes): array
     {
         $child = Child::findOrFail($childId);
-        $this->assertParentOwnsChild($user, $child);
+        if ($user->role !== 'admin') {
+            $this->assertParentOwnsChild($user, $child);
+        }
 
         if ($child->status === 'missing') {
             return ['status' => 'already_missing', 'child' => $child, 'notes' => $notes];
