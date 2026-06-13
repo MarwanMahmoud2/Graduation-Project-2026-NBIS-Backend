@@ -18,10 +18,10 @@ yarn-error.log
 /.idea
 /.vscode
 
-# AI service (Python)
-/ai-service/.venv
-/ai-service/**/__pycache__
-/ai-service/**/*.pyc
-
 # Local / generated exports
 NBIS Laravel Dashboard Role Setup*.json
+
+# Database
+/database/*.sqlite
+/database/*.sqlite-shm
+/database/*.sqlite-wal
