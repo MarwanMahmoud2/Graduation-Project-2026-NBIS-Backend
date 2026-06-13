@@ -81,4 +81,41 @@ export const adminService = {
     const response = await client.patch('/admin/notifications/read-all');
     return response.data;
   },
+
+  // Missing Reports
+  getActiveMissingReports: async () => {
+    const response = await client.get('/active-missing-reports');
+    return response.data;
+  },
+
+  getAllReports: async (params = {}) => {
+    const response = await client.get('/all-reports', { params });
+    return response.data;
+  },
+
+  getMissingReportDetails: async (reportId) => {
+    const response = await client.get(`/missing-reports/${reportId}`);
+    return response.data;
+  },
+
+  updateMissingReportStatus: async (reportId, status) => {
+    const response = await client.put(`/missing-reports/${reportId}/status`, { status });
+    return response.data;
+  },
+
+  reportMissing: async (data) => {
+    const response = await client.post('/admin/missing-reports', data);
+    return response.data;
+  },
+
+  // Child Linking
+  linkChildToParent: async (childId, parentEmail) => {
+    const response = await client.post(`/children/${childId}/link-parent`, { parent_email: parentEmail });
+    return response.data;
+  },
+
+  unlinkChildFromParent: async (childId) => {
+    const response = await client.post(`/children/${childId}/unlink-parent`);
+    return response.data;
+  },
 };

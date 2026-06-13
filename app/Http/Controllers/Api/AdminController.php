@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AdminNotification;
 use App\Models\Child;
+use App\Models\MissingReport;
 use App\Models\User;
 use App\Services\AdminNotificationService;
 use App\Services\SystemSettingsService;
@@ -316,6 +317,8 @@ class AdminController extends Controller
                 'date_found' => $child->date_found,
                 'notes' => $child->notes,
                 'status' => $child->status,
+                'parent_email' => $child->parent_email,
+                'is_linked' => $child->is_linked,
                 'created_at' => $child->created_at->diffForHumans(),
                 'child_photo_path' => $child->child_photo_path,
                 'footprint_path' => $child->footprint_path,
@@ -439,6 +442,237 @@ class AdminController extends Controller
             'data' => [
                 'updated' => $updatedCount,
             ],
+        ]);
+    }
+
+    /**
+     * Get active missing reports for police/admin dashboard
+     */
+    public function activeMissingReports(): JsonResponse
+    {
+        $reports = MissingReport::with(['child', 'reporter'])
+            ->where('status', 'active')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($report) {
+                // Map database status to new status values
+                $statusMap = [
+                    'active' => 'New',
+                    'pending' => 'Under Investigation',
+                    'resolved' => 'Resolved',
+                    'closed' => 'Closed',
+                ];
+                $status = $statusMap[$report->status] ?? ucfirst($report->status);
+
+                return [
+                    'id' => $report->id,
+                    'child_id' => $report->child_id,
+                    'child_name' => $report->child->name,
+                    'child_photo_path' => $report->child->child_photo_path,
+                    'mother_name' => $report->child->mother_name,
+                    'father_name' => $report->child->father_name,
+                    'father_phone' => $report->child->father_phone,
+                    'reported_by' => $report->reporter->name,
+                    'reporter_phone' => $report->reporter->phone,
+                    'notes' => $report->notes,
+                    'last_seen_location' => $report->last_seen_location,
+                    'last_seen_date' => $report->last_seen_date?->toIso8601String(),
+                    'report_type' => $report->report_type,
+                    'status' => $status,
+                    'description' => $report->description,
+                    'created_at' => $report->created_at->toIso8601String(),
+                ];
+            });
+
+        return response()->json([
+            'data' => $reports,
+        ]);
+    }
+
+    /**
+     * Get all reports for admin (including resolved/closed)
+     */
+    public function allReports(Request $request): JsonResponse
+    {
+        $query = MissingReport::with(['child', 'reporter']);
+
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by reporter
+        if ($request->has('reported_by')) {
+            $query->where('reported_by', $request->reported_by);
+        }
+
+        // Map database status to new status values
+        $statusMap = [
+            'active' => 'New',
+            'pending' => 'Under Investigation',
+            'resolved' => 'Resolved',
+            'closed' => 'Closed',
+        ];
+
+        $reports = $query->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($report) use ($statusMap) {
+                $status = $statusMap[$report->status] ?? ucfirst($report->status);
+
+                return [
+                    'id' => $report->id,
+                    'child_id' => $report->child_id,
+                    'child_name' => $report->child->name ?? 'Unknown',
+                    'child_photo_path' => $report->child->child_photo_path,
+                    'mother_name' => $report->child->mother_name,
+                    'father_name' => $report->child->father_name,
+                    'father_phone' => $report->child->father_phone,
+                    'reported_by' => $report->reporter->name ?? 'Unknown',
+                    'reporter_phone' => $report->reporter->phone,
+                    'notes' => $report->notes,
+                    'last_seen_location' => $report->last_seen_location,
+                    'last_seen_date' => $report->last_seen_date?->toIso8601String(),
+                    'report_type' => $report->report_type,
+                    'status' => $status,
+                    'description' => $report->description,
+                    'created_at' => $report->created_at->toIso8601String(),
+                ];
+            });
+
+        return response()->json([
+            'data' => $reports,
+        ]);
+    }
+
+    /**
+     * Get details of a specific missing report
+     */
+    public function missingReportDetails(MissingReport $report): JsonResponse
+    {
+        $report->load(['child', 'reporter']);
+
+        return response()->json([
+            'data' => [
+                'id' => $report->id,
+                'child' => [
+                    'id' => $report->child->id,
+                    'name' => $report->child->name,
+                    'mother_name' => $report->child->mother_name,
+                    'father_name' => $report->child->father_name,
+                    'father_phone' => $report->child->father_phone,
+                    'father_national_id' => $report->child->father_national_id,
+                    'gender' => $report->child->gender,
+                    'birth_date' => $report->child->birth_date,
+                    'child_photo_path' => $report->child->child_photo_path,
+                    'footprint_path' => $report->child->footprint_path,
+                    'status' => $report->child->status,
+                ],
+                'reporter' => [
+                    'id' => $report->reporter->id,
+                    'name' => $report->reporter->name,
+                    'phone' => $report->reporter->phone,
+                    'email' => $report->reporter->email,
+                ],
+                'notes' => $report->notes,
+                'last_seen_location' => $report->last_seen_location,
+                'last_seen_date' => $report->last_seen_date?->toIso8601String(),
+                'report_type' => $report->report_type,
+                'status' => $report->status,
+                'description' => $report->description,
+                'created_at' => $report->created_at->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
+     * Update missing report status (resolve/close)
+     */
+    public function updateMissingReportStatus(Request $request, MissingReport $report): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:resolved,closed'],
+        ]);
+
+        $report->update(['status' => $validated['status']]);
+
+        // If resolved, also update child status
+        if ($validated['status'] === 'resolved') {
+            $report->child->update(['status' => 'verified']);
+        }
+
+        return response()->json([
+            'message' => 'Report status updated successfully.',
+            'data' => [
+                'id' => $report->id,
+                'status' => $report->status,
+            ],
+        ]);
+    }
+
+    /**
+     * Link a child to a parent account by email
+     */
+    public function linkChildToParent(Request $request, Child $child): JsonResponse
+    {
+        $validated = $request->validate([
+            'parent_email' => ['required', 'email', 'exists:users,email'],
+        ]);
+
+        // Find parent user by email
+        $parent = User::where('email', $validated['parent_email'])
+            ->where('role', 'user')
+            ->first();
+
+        if (!$parent) {
+            return response()->json([
+                'message' => 'Parent account not found with this email.',
+            ], 404);
+        }
+
+        // Check if child is already linked to this parent
+        if ($child->user_id === $parent->id && $child->is_linked) {
+            return response()->json([
+                'message' => 'Child is already linked to this parent.',
+            ], 422);
+        }
+
+        // Link child to parent
+        $child->update([
+            'user_id' => $parent->id,
+            'parent_email' => $parent->email,
+            'is_linked' => true,
+        ]);
+
+        return response()->json([
+            'message' => 'Child successfully linked to parent account.',
+            'data' => [
+                'child_id' => $child->id,
+                'parent_id' => $parent->id,
+                'parent_email' => $parent->email,
+                'parent_name' => $parent->name,
+            ],
+        ]);
+    }
+
+    /**
+     * Unlink a child from parent account
+     */
+    public function unlinkChildFromParent(Child $child): JsonResponse
+    {
+        if (!$child->is_linked) {
+            return response()->json([
+                'message' => 'Child is not linked to any parent.',
+            ], 422);
+        }
+
+        $child->update([
+            'user_id' => null,
+            'parent_email' => null,
+            'is_linked' => false,
+        ]);
+
+        return response()->json([
+            'message' => 'Child successfully unlinked from parent account.',
         ]);
     }
 }

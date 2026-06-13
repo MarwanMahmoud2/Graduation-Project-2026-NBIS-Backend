@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\AdminNotification;
 use App\Models\Child;
+use App\Models\MissingReport;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -30,6 +32,8 @@ class ParentChildService
             'father_name' => $child->father_name,
             'father_phone' => $child->father_phone,
             'status' => $child->status,
+            'parent_email' => $child->parent_email,
+            'is_linked' => $child->is_linked,
             'footprint_url' => $child->footprint_url,
             'registered_at' => $child->created_at?->toIso8601String(),
             'updated_at' => $child->updated_at?->toIso8601String(),
@@ -44,9 +48,9 @@ class ParentChildService
     }
 
     /**
-     * @return array{status: 'success'|'already_missing', child: Child, notes?: ?string}
+     * @return array{status: 'success'|'already_missing', child: Child, notes?: ?string, report?: MissingReport}
      */
-    public function reportMissing(User $user, int $childId, ?string $notes): array
+    public function reportMissing(User $user, int $childId, ?string $notes, ?string $lastSeenLocation = null, ?string $lastSeenDate = null, ?string $description = null): array
     {
         $child = Child::findOrFail($childId);
         if ($user->role !== 'admin') {
@@ -57,10 +61,43 @@ class ParentChildService
             return ['status' => 'already_missing', 'child' => $child, 'notes' => $notes];
         }
 
+        // Update child status
         $child->update([
             'status' => 'missing',
         ]);
 
-        return ['status' => 'success', 'child' => $child->fresh(), 'notes' => $notes];
+        // Create missing report record
+        $report = MissingReport::create([
+            'child_id' => $child->id,
+            'reported_by' => $user->id,
+            'notes' => $notes,
+            'last_seen_location' => $lastSeenLocation,
+            'last_seen_date' => $lastSeenDate ? \Carbon\Carbon::parse($lastSeenDate) : null,
+            'report_type' => 'missing',
+            'status' => 'active',
+            'description' => $description,
+        ]);
+
+        // Send notifications to police and admin
+        $this->sendMissingChildNotifications($child, $user, $report);
+
+        return ['status' => 'success', 'child' => $child->fresh(), 'notes' => $notes, 'report' => $report];
+    }
+
+    private function sendMissingChildNotifications(Child $child, User $reporter, MissingReport $report): void
+    {
+        // Get all police and admin users
+        $recipients = User::whereIn('role', ['police', 'admin'])->get();
+
+        foreach ($recipients as $recipient) {
+            AdminNotification::create([
+                'title' => 'Missing Child Reported',
+                'message' => "Child '{$child->name}' has been reported as missing by {$reporter->name}.",
+                'level' => 'urgent',
+                'action_url' => $recipient->role === 'admin' ? "/admin/missing-children" : "/police/verification-logs",
+                'read_at' => null,
+                'created_by' => $reporter->id,
+            ]);
+        }
     }
 }

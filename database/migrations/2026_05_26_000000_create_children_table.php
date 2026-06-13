@@ -38,7 +38,7 @@ return new class extends Migration
             $table->string('nfc_tag_id')->nullable()->unique();
 
             // Status
-            $table->string('status')->default('safe');
+            $table->string('status')->default('verified');
 
             $table->timestamps();
         });

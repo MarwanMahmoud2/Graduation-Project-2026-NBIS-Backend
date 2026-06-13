@@ -31,12 +31,13 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware(['auth:sanctum', 'role:user'])->group(function () {
     Route::get('/my-children', [ParentController::class, 'index']);
     Route::get('/my-children/{child}', [ParentController::class, 'show']);
-    Route::post('/missing-reports', [ParentController::class, 'reportMissing']);
+    Route::post('/my-children/missing-reports', [ParentController::class, 'reportMissing']);
+    Route::get('/my-reports', [ParentController::class, 'myReports']);
 });
 
 // Admin can also report missing children (no ownership constraint)
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
-    Route::post('/missing-reports', [ParentController::class, 'reportMissing']);
+    Route::post('/admin/missing-reports', [ParentController::class, 'reportMissing']);
 });
 
 /*
@@ -48,6 +49,10 @@ Route::middleware(['auth:sanctum', 'role:nurse,admin'])->group(function () {
     Route::post('/children/register', [ChildController::class, 'store']);
     Route::get('/children', [ChildController::class, 'index']);
     Route::get('/children/{child}', [ChildController::class, 'show']);
+    
+    // Child linking (shared by nurse and admin)
+    Route::post('/children/{child}/link-parent', [AdminController::class, 'linkChildToParent']);
+    Route::post('/children/{child}/unlink-parent', [AdminController::class, 'unlinkChildFromParent']);
 });
 
 /*
@@ -69,6 +74,12 @@ Route::middleware(['auth:sanctum', 'role:police,admin'])->group(function () {
     Route::post('/children/search-by-footprint', [ChildController::class, 'searchByFootprint']);
     Route::post('/children/validate-footprint', [ChildController::class, 'validateFootprint']);
     Route::get('/verification-logs', [AdminController::class, 'verificationLogs']);
+    
+    // Missing reports (shared by police and admin)
+    Route::get('/active-missing-reports', [AdminController::class, 'activeMissingReports']);
+    Route::get('/all-reports', [AdminController::class, 'allReports']);
+    Route::get('/missing-reports/{report}', [AdminController::class, 'missingReportDetails']);
+    Route::put('/missing-reports/{report}/status', [AdminController::class, 'updateMissingReportStatus']);
 });
 
 /*

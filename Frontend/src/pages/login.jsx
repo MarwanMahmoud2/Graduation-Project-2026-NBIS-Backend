@@ -31,7 +31,7 @@ function Login() {
 
   if (Object.keys(e).length === 0) {
     setLoading(true);
-    const result = await login({ id, password });
+    const result = await login({ id, password, remember });
     setLoading(false);
     
     if (result.success) {

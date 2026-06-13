@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Child;
 use App\Services\ChildRegistrationService;
 use App\Services\ChildSearchService;
 use App\Services\FootprintAiService;
@@ -20,6 +21,99 @@ class ChildController extends Controller
         private FootprintAiService $footprintAi,
         private FootprintValidationService $footprintValidation,
     ) {
+    }
+
+    /**
+     * List all children (nurse/admin)
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $query = Child::with('parent');
+
+        // Search filter
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('mother_name', 'like', "%{$search}%")
+                  ->orWhere('father_name', 'like', "%{$search}%");
+            });
+        }
+
+        // Status filter
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $children = $query->latest()->get()->map(function ($child) {
+            return [
+                'id' => $child->id,
+                'name' => $child->name,
+                'mother_name' => $child->mother_name,
+                'father_name' => $child->father_name,
+                'father_phone' => $child->father_phone,
+                'father_national_id' => $child->father_national_id,
+                'gender' => $child->gender,
+                'birth_date' => $child->birth_date,
+                'estimated_age' => $child->estimated_age,
+                'nfc_tag_id' => $child->nfc_tag_id,
+                'found_location' => $child->found_location,
+                'date_found' => $child->date_found,
+                'notes' => $child->notes,
+                'status' => $child->status,
+                'parent_email' => $child->parent_email,
+                'is_linked' => $child->is_linked,
+                'created_at' => $child->created_at->diffForHumans(),
+                'child_photo_path' => $child->child_photo_path,
+                'footprint_path' => $child->footprint_path,
+                'parent' => $child->parent ? [
+                    'id' => $child->parent->id,
+                    'name' => $child->parent->name,
+                    'phone' => $child->parent->phone,
+                ] : null,
+            ];
+        });
+
+        return response()->json([
+            'data' => $children,
+        ]);
+    }
+
+    /**
+     * Show single child details (nurse/admin)
+     */
+    public function show(Child $child): JsonResponse
+    {
+        $child->load('parent');
+
+        return response()->json([
+            'data' => [
+                'id' => $child->id,
+                'name' => $child->name,
+                'mother_name' => $child->mother_name,
+                'father_name' => $child->father_name,
+                'father_phone' => $child->father_phone,
+                'father_national_id' => $child->father_national_id,
+                'gender' => $child->gender,
+                'birth_date' => $child->birth_date,
+                'estimated_age' => $child->estimated_age,
+                'nfc_tag_id' => $child->nfc_tag_id,
+                'found_location' => $child->found_location,
+                'date_found' => $child->date_found,
+                'notes' => $child->notes,
+                'status' => $child->status,
+                'parent_email' => $child->parent_email,
+                'is_linked' => $child->is_linked,
+                'created_at' => $child->created_at->diffForHumans(),
+                'child_photo_path' => $child->child_photo_path,
+                'footprint_path' => $child->footprint_path,
+                'parent' => $child->parent ? [
+                    'id' => $child->parent->id,
+                    'name' => $child->parent->name,
+                    'phone' => $child->parent->phone,
+                ] : null,
+            ],
+        ]);
     }
 
     /**
@@ -82,7 +176,7 @@ class ChildController extends Controller
             'nfc_tag_id' => $validated['nfc_tag_id'],
             'footprint_path' => $imagePath,
             'child_photo_path' => $childPhotoPath,
-            'status' => 'safe',
+            'status' => 'verified',
         ]);
 
         return response()->json([

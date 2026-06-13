@@ -47,7 +47,7 @@ class ChildRegistrationService
             'found_location' => $data['found_location'] ?? null,
             'date_found' => $data['date_found'] ?? null,
             'notes' => $data['notes'] ?? null,
-            'status' => 'safe',
+            'status' => 'verified',
             'nurse_id' => $nurseId,
             'user_id' => $parentUserId,
         ]);

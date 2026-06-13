@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
-import { parentService } from "../../api/parent";
 import { adminService } from "../../api/admin";
 
 export default function ReportMissing() {
@@ -37,11 +36,11 @@ export default function ReportMissing() {
 
   const handleReportMissing = async () => {
     if (!selectedChild) return;
-    
+
     setReporting(true);
     setError("");
     try {
-      await parentService.reportMissing({ child_id: selectedChild.id });
+      await adminService.reportMissing({ child_id: selectedChild.id });
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to report child as missing");

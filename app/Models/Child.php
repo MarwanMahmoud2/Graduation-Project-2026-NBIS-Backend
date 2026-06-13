@@ -20,6 +20,8 @@ class Child extends Model
         'father_name',
         'father_phone',
         'father_national_id',
+        'parent_email',
+        'is_linked',
         'footprint_path',
         'child_photo_path',
         'estimated_age',

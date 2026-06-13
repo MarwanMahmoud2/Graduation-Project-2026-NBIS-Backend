@@ -26,26 +26,136 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [lastActivity, setLastActivity] = useState(Date.now());
+
+  // Helper to get the appropriate storage based on remember preference
+  const getStorage = () => rememberMe ? localStorage : sessionStorage;
+
+  // Inactivity timeout (15 minutes in milliseconds)
+  const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
+
+  // Update last activity timestamp
+  const updateActivity = () => {
+    setLastActivity(Date.now());
+  };
+
+  // Check for inactivity and auto-logout
+  useEffect(() => {
+    if (!isAuthenticated || rememberMe) return; // Only check for non-remembered sessions
+
+    const checkInactivity = () => {
+      const now = Date.now();
+      const timeSinceActivity = now - lastActivity;
+
+      if (timeSinceActivity >= INACTIVITY_TIMEOUT) {
+        // Show warning before logout
+        const warningShown = sessionStorage.getItem('inactivity_warning_shown');
+        if (!warningShown) {
+          sessionStorage.setItem('inactivity_warning_shown', 'true');
+          // You've been inactive for 15 minutes. You will be logged out.
+          alert('You have been inactive for 15 minutes. You will be logged out for security.');
+        }
+        logout();
+      }
+    };
+
+    const inactivityInterval = setInterval(checkInactivity, 60000); // Check every minute
+
+    return () => clearInterval(inactivityInterval);
+  }, [isAuthenticated, rememberMe, lastActivity]);
+
+  // Track user activity
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+
+    const handleActivity = () => {
+      updateActivity();
+    };
+
+    activityEvents.forEach(event => {
+      window.addEventListener(event, handleActivity);
+    });
+
+    return () => {
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('nbis_token');
-    const storedUser = localStorage.getItem('nbis_user');
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-    }
-    setLoading(false);
+    const initAuth = async () => {
+      // Check localStorage first (for remembered sessions)
+      const storedToken = localStorage.getItem('nbis_token');
+      const storedUser = localStorage.getItem('nbis_user');
+      const storedRemember = localStorage.getItem('nbis_remember');
+      
+      // Also check sessionStorage for non-remembered sessions
+      const sessionToken = sessionStorage.getItem('nbis_token');
+      const sessionUser = sessionStorage.getItem('nbis_user');
+      
+      const tokenToUse = storedToken || sessionToken;
+      const userToUse = storedUser || sessionUser;
+      const rememberToUse = storedRemember === 'true';
+
+      if (tokenToUse && userToUse) {
+        setRememberMe(rememberToUse);
+        setToken(tokenToUse);
+        setUser(JSON.parse(userToUse));
+        setLastActivity(Date.now());
+        
+        // Validate token with backend
+        try {
+          const response = await authService.getCurrentUser();
+          setUser(response.user);
+          const storage = rememberToUse ? localStorage : sessionStorage;
+          storage.setItem('nbis_user', JSON.stringify(response.user));
+          setIsAuthenticated(true);
+        } catch (error) {
+          // Token is invalid, clear storage
+          localStorage.removeItem('nbis_token');
+          localStorage.removeItem('nbis_user');
+          localStorage.removeItem('nbis_remember');
+          sessionStorage.removeItem('nbis_token');
+          sessionStorage.removeItem('nbis_user');
+          setToken(null);
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      }
+      setLoading(false);
+    };
+
+    initAuth();
   }, []);
 
   const login = async (credentials) => {
     try {
       const response = await authService.login(credentials);
       const { token, user } = response;
+      const remember = credentials.remember || false;
       
-      localStorage.setItem('nbis_token', token);
-      localStorage.setItem('nbis_user', JSON.stringify(user));
+      setRememberMe(remember);
+      setLastActivity(Date.now());
+      const storage = remember ? localStorage : sessionStorage;
+      
+      // Always clear both storage types first
+      localStorage.removeItem('nbis_token');
+      localStorage.removeItem('nbis_user');
+      localStorage.removeItem('nbis_remember');
+      sessionStorage.removeItem('nbis_token');
+      sessionStorage.removeItem('nbis_user');
+      
+      // Store in appropriate storage
+      storage.setItem('nbis_token', token);
+      storage.setItem('nbis_user', JSON.stringify(user));
+      
+      if (remember) {
+        localStorage.setItem('nbis_remember', 'true');
+      }
       
       setToken(token);
       setUser(user);
@@ -65,9 +175,26 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authService.register(data);
       const { token, user } = response;
+      const remember = data.remember || false;
       
-      localStorage.setItem('nbis_token', token);
-      localStorage.setItem('nbis_user', JSON.stringify(user));
+      setRememberMe(remember);
+      setLastActivity(Date.now());
+      const storage = remember ? localStorage : sessionStorage;
+      
+      // Always clear both storage types first
+      localStorage.removeItem('nbis_token');
+      localStorage.removeItem('nbis_user');
+      localStorage.removeItem('nbis_remember');
+      sessionStorage.removeItem('nbis_token');
+      sessionStorage.removeItem('nbis_user');
+      
+      // Store in appropriate storage
+      storage.setItem('nbis_token', token);
+      storage.setItem('nbis_user', JSON.stringify(user));
+      
+      if (remember) {
+        localStorage.setItem('nbis_remember', 'true');
+      }
       
       setToken(token);
       setUser(user);
@@ -89,11 +216,18 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      // Clear both storage types
       localStorage.removeItem('nbis_token');
       localStorage.removeItem('nbis_user');
+      localStorage.removeItem('nbis_remember');
+      sessionStorage.removeItem('nbis_token');
+      sessionStorage.removeItem('nbis_user');
+      sessionStorage.removeItem('inactivity_warning_shown');
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);
+      setRememberMe(false);
+      setLastActivity(Date.now());
     }
   };
 
@@ -102,7 +236,8 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.getCurrentUser();
       console.log('getCurrentUser response:', response);
       setUser(response.user);
-      localStorage.setItem('nbis_user', JSON.stringify(response.user));
+      const storage = getStorage();
+      storage.setItem('nbis_user', JSON.stringify(response.user));
       return response.user;
     } catch (error) {
       if (error.response?.status === 401) {

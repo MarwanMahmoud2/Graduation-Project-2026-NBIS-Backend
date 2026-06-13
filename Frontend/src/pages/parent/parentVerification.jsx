@@ -1,6 +1,6 @@
 // src/pages/parent/ParentVerification.jsx
 import { useState, useEffect } from "react";
-import ParentLayout from "../../components/ParentLayout";
+import ParentLayout from "../../components/parentLayout";
 import { parentService } from "../../api/parent";
 
 function TabBar({ active, setActive }) {
@@ -19,24 +19,11 @@ function TabBar({ active, setActive }) {
 }
 
 // ── REPORTS TAB ────────────────────────────────────────────────────────────
-const reports = [
-  { name: "Tia Ahmed", id: "ID:304010112", type: "Missing Child", priority: "High", status: "New", date: "April 2026", avatar: "T" },
-  { name: "Randa Elsaeed", id: "ID:404011112", type: "Suspicious Case", priority: "Medium", status: "Under Investigation", date: "April 2026", avatar: "R" },
-  { name: "Toto Elsaeed", id: "ID:504022132", type: "Identity Issue", priority: "Verified", status: "Resolved", date: "March 2026", avatar: "T" },
-  { name: "Marim Elsaeed", id: "ID:306080112", type: "Identity Issue", priority: "Verified", status: "Closed", date: "March 2026", avatar: "M" },
-];
-
-const priorityStyle = {
-  High: "bg-red-100 text-red-500",
-  Medium: "bg-yellow-100 text-yellow-600",
-  Verified: "bg-green-100 text-green-600",
-};
-
 const statusStyle = {
-  New: "bg-blue-100 text-blue-600",
-  "Under Investigation": "bg-orange-100 text-orange-500",
-  Resolved: "bg-green-100 text-green-600",
-  Closed: "bg-gray-100 text-gray-500",
+  new: "bg-blue-100 text-blue-600",
+  "under investigation": "bg-orange-100 text-orange-600",
+  resolved: "bg-green-100 text-green-600",
+  closed: "bg-gray-100 text-gray-500",
 };
 
 function ReportsTab() {
@@ -48,13 +35,24 @@ function ReportsTab() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // TODO: Fetch reports from API when endpoint is available
-    setReports([]);
-    setLoading(false);
+    const fetchReports = async () => {
+      try {
+        setLoading(true);
+        const data = await parentService.getMyReports();
+        setReports(data);
+      } catch (err) {
+        setError('Failed to load reports');
+        console.error('Error fetching reports:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReports();
   }, []);
 
   const filtered = reports.filter(r => {
-    const matchSearch = r.name?.toLowerCase().includes(search.toLowerCase()) || r.id?.includes(search);
+    const matchSearch = r.child_name?.toLowerCase().includes(search.toLowerCase()) || String(r.child_id)?.includes(search);
     const matchReport = reportFilter === "All Reports" || r.type === reportFilter;
     const matchStatus = statusFilter === "All Status" || r.status === statusFilter;
     return matchSearch && matchReport && matchStatus;
@@ -98,7 +96,7 @@ function ReportsTab() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
-                {["Child Name", "Reported by", "Priority", "Status", "Date", "Actions"].map(h => (
+                {["Child Name", "Reported by", "Status", "Date Requested", "Actions"].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -109,22 +107,23 @@ function ReportsTab() {
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">
-                        {r.child_name?.charAt(0) || r.name?.charAt(0) || 'R'}
+                        {r.avatar || r.child_name?.charAt(0) || 'R'}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">{r.child_name || r.name}</p>
-                        <p className="text-xs text-gray-400">{r.child_id || r.id}</p>
+                        <p className="text-sm font-medium text-gray-700">{r.child_name}</p>
+                        <p className="text-xs text-gray-400">ID: {r.child_id}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-500">{r.report_type || r.type}</td>
+                  <td className="px-5 py-3 text-sm text-gray-500">Parent</td>
                   <td className="px-5 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${priorityStyle[r.priority]}`}>{r.priority}</span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyle[r.status] || 'bg-gray-100 text-gray-600'}`}>
+                      {r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : 'Unknown'}
+                    </span>
                   </td>
-                  <td className="px-5 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyle[r.status]}`}>{r.status}</span>
+                  <td className="px-5 py-3 text-sm text-gray-400">
+                    {r.date || (r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A')}
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-400">{r.date}</td>
                   <td className="px-5 py-3">
                     <button 
                       onClick={() => {/* TODO: Add view details functionality */}}
@@ -169,6 +168,7 @@ function SubmitReportTab() {
   const validate = () => {
     const e = {};
     if (!form.childName.trim()) e.childName = "Required";
+    if (!form.childId.trim()) e.childId = "Required";
     if (!form.reportType) e.reportType = "Required";
     if (!form.lastSeen) e.lastSeen = "Required";
     if (!form.lastLocation.trim()) e.lastLocation = "Required";
@@ -182,11 +182,10 @@ function SubmitReportTab() {
       setLoading(true);
       try {
         await parentService.reportMissing({
-          child_name: form.childName,
           child_id: form.childId,
-          report_type: form.reportType,
-          last_seen: form.lastSeen,
-          last_location: form.lastLocation,
+          notes: form.description,
+          last_seen_location: form.lastLocation,
+          last_seen_date: form.lastSeen,
           description: form.description,
         });
         setSuccess(true);
@@ -244,8 +243,9 @@ function SubmitReportTab() {
             {errors.childName && <p className="text-red-500 text-xs mt-1">⚠ {errors.childName}</p>}
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-600 mb-1 block">Child ID</label>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Child ID*</label>
             <input value={form.childId} onChange={set("childId")} className={inputClass("childId")} placeholder="e.g. ID:304010112" />
+            {errors.childId && <p className="text-red-500 text-xs mt-1">⚠ {errors.childId}</p>}
           </div>
           <div className="col-span-2">
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Report Type*</label>

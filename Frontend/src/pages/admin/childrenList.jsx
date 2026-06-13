@@ -79,9 +79,8 @@ function ChildDetailModal({ child, onClose }) {
                   <div>
                     <p className="text-xs text-gray-500">Status</p>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      child.status === 'safe' ? 'bg-blue-100 text-blue-600' :
-                      child.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
                       child.status === 'verified' ? 'bg-green-100 text-green-600' :
+                      child.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
                       child.status === 'missing' ? 'bg-red-100 text-red-500' :
                       'bg-gray-100 text-gray-500'
                     }`}>
@@ -136,24 +135,104 @@ function ChildDetailModal({ child, onClose }) {
             </div>
 
             {/* Parent Information */}
-            {child.parent && (
-              <div className="col-span-2">
-                <h3 className="text-sm font-semibold text-gray-600 mb-3">Parent Information</h3>
-                <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500">Parent Name</p>
-                      <p className="text-sm font-medium text-gray-800">{child.parent.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Phone</p>
-                      <p className="text-sm font-medium text-gray-800">{child.parent.phone || 'N/A'}</p>
-                    </div>
+            <div className="col-span-2">
+              <h3 className="text-sm font-semibold text-gray-600 mb-3">Parent Information</h3>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Linked Status</p>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      child.is_linked ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {child.is_linked ? 'Linked' : 'Not Linked'}
+                    </span>
                   </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Parent Email</p>
+                    <p className="text-sm font-medium text-gray-800">{child.parent_email || 'N/A'}</p>
+                  </div>
+                  {child.parent && (
+                    <>
+                      <div>
+                        <p className="text-xs text-gray-500">Parent Name</p>
+                        <p className="text-sm font-medium text-gray-800">{child.parent.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Phone</p>
+                        <p className="text-sm font-medium text-gray-800">{child.parent.phone || 'N/A'}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── LINK TO PARENT MODAL ─────────────────────────────────────────────────────
+function LinkToParentModal({ child, onClose, onLink }) {
+  const [parentEmail, setParentEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    if (!parentEmail.trim()) {
+      setError('Please enter a parent email');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      await onLink(child.id, parentEmail);
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to link child to parent');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800">Link Child to Parent</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        
+        <div className="mb-4">
+          <p className="text-sm text-gray-600 mb-2">Child: <span className="font-medium">{child?.name}</span></p>
+          <p className="text-xs text-gray-400">Enter the parent's email address to link this child to their account.</p>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Parent Email</label>
+          <input
+            type="email"
+            value={parentEmail}
+            onChange={e => setParentEmail(e.target.value)}
+            placeholder="parent@example.com"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+          />
+          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button onClick={handleSubmit} disabled={loading} className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50">
+            {loading ? 'Linking...' : 'Link Child'}
+          </button>
         </div>
       </div>
     </div>
@@ -168,6 +247,7 @@ export default function ChildrenList() {
   const [loading, setLoading] = useState(true);
   const [selectedChild, setSelectedChild] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [linkChild, setLinkChild] = useState(null);
 
   useEffect(() => {
     loadChildren();
@@ -206,11 +286,32 @@ export default function ChildrenList() {
     }
   };
 
+  const handleLinkChild = async (childId, parentEmail) => {
+    try {
+      await adminService.linkChildToParent(childId, parentEmail);
+      // Reload children to show updated status
+      await loadChildren();
+    } catch (err) {
+      console.error('Failed to link child:', err);
+      throw err;
+    }
+  };
+
+  const handleUnlinkChild = async (childId) => {
+    try {
+      await adminService.unlinkChildFromParent(childId);
+      // Reload children to show updated status
+      await loadChildren();
+    } catch (err) {
+      console.error('Failed to unlink child:', err);
+      alert('Failed to unlink child');
+    }
+  };
+
   const statusColors = {
     verified: "bg-green-100 text-green-600",
     pending: "bg-yellow-100 text-yellow-600",
     missing: "bg-red-100 text-red-600",
-    safe: "bg-blue-100 text-blue-600",
   };
 
   return (
@@ -293,6 +394,11 @@ export default function ChildrenList() {
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-3 justify-end">
                       <button onClick={() => setSelectedChild(child)} className="text-xs text-blue-500 hover:underline">View</button>
+                      {child.is_linked ? (
+                        <button onClick={() => handleUnlinkChild(child.id)} className="text-xs text-orange-500 hover:underline">Unlink</button>
+                      ) : (
+                        <button onClick={() => setLinkChild(child)} className="text-xs text-green-500 hover:underline">Link</button>
+                      )}
                       <button onClick={() => handleDelete(child.id)} className="text-xs text-red-400 hover:underline">Delete</button>
                     </div>
                   </td>
@@ -335,6 +441,7 @@ export default function ChildrenList() {
           </div>
         </div>
       )}
+      {linkChild && <LinkToParentModal child={linkChild} onClose={() => setLinkChild(null)} onLink={handleLinkChild} />}
     </AdminLayout>
   );
 }

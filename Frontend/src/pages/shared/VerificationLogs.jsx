@@ -79,9 +79,8 @@ function ChildDetailModal({ child, onClose }) {
                   <div>
                     <p className="text-xs text-gray-500">Status</p>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      child.status === 'safe' ? 'bg-blue-100 text-blue-600' :
-                      child.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
                       child.status === 'verified' ? 'bg-green-100 text-green-600' :
+                      child.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
                       child.status === 'missing' ? 'bg-red-100 text-red-500' :
                       'bg-gray-100 text-gray-500'
                     }`}>
@@ -195,9 +194,8 @@ function TabBar({ active, setActive }) {
 
 // ── REPORTS TAB ────────────────────────────────────────────────────────────
 const statusStyle = {
-  safe: "bg-blue-100 text-blue-600",
-  pending: "bg-yellow-100 text-yellow-600",
   verified: "bg-green-100 text-green-600",
+  pending: "bg-yellow-100 text-yellow-600",
   missing: "bg-red-100 text-red-500",
 };
 
@@ -247,7 +245,7 @@ function ReportsTab() {
             placeholder="Search By Child Name Or ID..." />
         </div>
         {[{ val: reportFilter, set: setReportFilter, opts: ["all", "admin", "parent"] },
-          { val: statusFilter, set: setStatusFilter, opts: ["All Status", "safe", "pending", "verified", "missing"] }
+          { val: statusFilter, set: setStatusFilter, opts: ["All Status", "verified", "pending", "missing"] }
         ].map(({ val, set, opts }, i) => (
           <div key={i} className="relative">
             <select value={val} onChange={e => set(e.target.value)}

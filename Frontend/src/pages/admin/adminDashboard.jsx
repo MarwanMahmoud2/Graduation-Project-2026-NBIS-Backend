@@ -79,9 +79,8 @@ function ChildDetailModal({ child, onClose }) {
                   <div>
                     <p className="text-xs text-gray-500">Status</p>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      child.status === 'safe' ? 'bg-blue-100 text-blue-600' :
-                      child.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
                       child.status === 'verified' ? 'bg-green-100 text-green-600' :
+                      child.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
                       child.status === 'missing' ? 'bg-red-100 text-red-500' :
                       'bg-gray-100 text-gray-500'
                     }`}>
@@ -145,7 +144,6 @@ const statusStyle = {
   verified: "bg-green-100 text-green-600",
   pending: "bg-yellow-100 text-yellow-600",
   missing: "bg-red-100 text-red-500",
-  safe: "bg-blue-100 text-blue-600",
 };
 
 export default function AdminDashboard() {
@@ -153,6 +151,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [children, setChildren] = useState([]);
   const [users, setUsers] = useState([]);
+  const [missingReports, setMissingReports] = useState([]);
   const [selectedChild, setSelectedChild] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -162,14 +161,16 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [statsRes, childrenRes, usersRes] = await Promise.all([
+      const [statsRes, childrenRes, usersRes, reportsRes] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getChildrenOverview(),
         adminService.getUsers(),
+        adminService.getActiveMissingReports(),
       ]);
       setStats(statsRes.data);
       setChildren(childrenRes.data);
       setUsers(usersRes.data);
+      setMissingReports(reportsRes.data || []);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -262,7 +263,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Users Overview Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-gray-700">Recent Users</h2>
           <button onClick={() => navigate('/admin/members/list')} className="text-xs text-blue-500 hover:underline">View All</button>
@@ -309,6 +310,62 @@ export default function AdminDashboard() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Active Police Reports */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-700">Active Police Reports</h2>
+          <button onClick={() => navigate('/admin/missing-children')} className="text-xs text-blue-500 hover:underline">View All</button>
+        </div>
+        {missingReports.length === 0 ? (
+          <div className="px-6 py-8 text-center text-gray-400 text-sm">
+            No active missing reports
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {["Child Name", "Reported By", "Last Seen", "Status", "Actions"].map(h => (
+                  <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-gray-500">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {missingReports.slice(0, 5).map((report) => (
+                <tr key={report.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                  <td className="px-6 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm">
+                        {report.child_name?.charAt(0) || 'B'}
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">{report.child_name}</span>
+                        <p className="text-xs text-gray-400">{report.mother_name}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3 text-sm text-gray-500">{report.reported_by}</td>
+                  <td className="px-6 py-3 text-sm text-gray-500">{report.last_seen_location || 'N/A'}</td>
+                  <td className="px-6 py-3">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
+                      report.status === 'active' ? 'bg-red-100 text-red-500' :
+                      report.status === 'resolved' ? 'bg-green-100 text-green-600' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {report.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3">
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg transition">
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
       {selectedChild && <ChildDetailModal child={selectedChild} onClose={() => setSelectedChild(null)} />}
     </AdminLayout>
